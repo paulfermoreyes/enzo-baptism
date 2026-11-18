@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "EB Garamond", Georgia, serif;
+  --font-label: "Nunito Sans", system-ui, sans-serif;
+
+  --color-surface: #fbf9f5;
+  --color-parchment: #fdfbf7;
+  --color-surface-low: #f5f3ef;
+  --color-surface-container: #efeeea;
+  --color-surface-high: #eae8e4;
+  --color-surface-highest: #e4e2de;
+
+  --color-primary: #132e44;
+  --color-primary-container: #2b445b;
+  --color-on-primary-container: #97b1cc;
+
+  --color-secondary: #775a19;
+  --color-gold: #c5a059;
+  --color-gold-light: #e5d3af;
+  --color-gold-bright: #d4af37;
+
+  --color-sky: #c9e0f2;
+  --color-sky-soft: #e2eef8;
+  --color-tertiary: #182e3c;
+
+  --color-ink: #1b1c1a;
+  --color-ink-muted: #43474d;
+  --color-outline: #73777d;
+  --color-outline-variant: #c3c7cd;
+  --color-error: #ba1a1a;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 12% 10%, rgba(201, 224, 242, 0.45) 0%, transparent 42%),
+      radial-gradient(circle at 88% 18%, rgba(254, 212, 136, 0.18) 0%, transparent 38%),
+      radial-gradient(circle at 50% 85%, rgba(201, 224, 242, 0.35) 0%, transparent 50%),
+      var(--color-surface);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :where(a:any-link, button, input, select, textarea):focus-visible {
+    outline: 3px solid var(--color-primary-container);
+    outline-offset: 2px;
+  }
+}
+
+/* Visually hidden utility that reveals on focus-within (e.g. skip links) */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Celestial Cherub atmospheric glow */
+.atmospheric-glow {
+  box-shadow:
+    0 20px 45px -10px rgba(43, 68, 91, 0.08),
+    0 0 60px 10px rgba(201, 224, 242, 0.45);
+}
+
+/* Tapering gold ceremonial rule */
+.ceremonial-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(197, 160, 89, 0.75) 50%,
+    transparent 100%
+  );
+}
+
+/* Form validation: only show error state after user interaction (:user-invalid) */
+.celestial-input {
+  font: inherit;
+  font-size: max(1rem, 1em);
+  min-height: 48px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.celestial-input:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 4px rgba(201, 224, 242, 0.5);
+  outline: none;
+}
+
+.celestial-input:is(:user-invalid, .user-invalid-fallback) {
+  border-color: var(--color-error);
+  background-color: #fff6f6;
+}
+
+.celestial-input:is(:user-invalid, .user-invalid-fallback) + .field-error {
+  display: flex;
+}
+
+.field-error {
+  display: none;
+}
+
+/* Native <dialog> modal scroll containment & backdrop */
+dialog:modal {
+  overscroll-behavior: contain;
+  margin: auto;
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(92vw, 34rem);
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(19, 46, 68, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+}
