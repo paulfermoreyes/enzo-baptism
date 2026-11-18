@@ -1,0 +1,90 @@
+rules_version='2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['paulfermoreyes@gmail.com', 'ljcabahug@gmail.com'];
+    }
+
+    function guestExists(guestId) {
+      return exists(/databases/$(database)/documents/guests/$(guestId));
+    }
+
+    function isValidRsvp(guestId) {
+      let data = request.resource.data;
+      return guestExists(guestId)
+        && data.guestId == guestId
+        && data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 120
+        && data.email is string && data.email.size() > 3 && data.email.size() <= 160
+        && data.attendance in ['in-person', 'remote']
+        && data.guestCount is int && data.guestCount >= 1 && data.guestCount <= 10
+        && (!('dietaryNotes' in data) || (data.dietaryNotes is string && data.dietaryNotes.size() <= 300))
+        && (!('blessingMessage' in data) || (data.blessingMessage is string && data.blessingMessage.size() <= 1000))
+        && (!('pledgeAmount' in data) || data.pledgeAmount == null || (data.pledgeAmount is string && data.pledgeAmount.size() <= 60))
+        && (!('reservedGiftId' in data) || data.reservedGiftId == null || data.reservedGiftId is string);
+    }
+
+    function isValidBlessing(guestId) {
+      let data = request.resource.data;
+      return guestExists(guestId)
+        && data.id == guestId
+        && data.author is string && data.author.size() > 0 && data.author.size() <= 120
+        && data.initials is string && data.initials.size() >= 1 && data.initials.size() <= 4
+        && data.role is string && data.role.size() > 0 && data.role.size() <= 80
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 1000;
+    }
+
+    function isValidRegistryUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let metadataUnchanged = after.id == before.id
+        && after.category == before.category
+        && after.title == before.title
+        && after.priceLabel == before.priceLabel
+        && after.description == before.description
+        && after.allowMultiple == before.allowMultiple
+        && after.isFund == before.isFund;
+
+      let validSingleClaim = !before.allowMultiple
+        && (
+          // Claiming an unreserved gift
+          (before.reservedByGuestId == null && after.reservedByGuestId is string && guestExists(after.reservedByGuestId))
+          // Releasing a gift you previously claimed, or keeping your own claim
+          || (before.reservedByGuestId is string && (after.reservedByGuestId == null || after.reservedByGuestId == before.reservedByGuestId))
+        );
+
+      let validMultiPledge = before.allowMultiple
+        && after.reservedByGuestIds is list
+        && after.reservedByGuestIds.size() <= 200;
+
+      return metadataUnchanged && (validSingleClaim || validMultiPledge);
+    }
+
+    match /guests/{guestId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /rsvps/{guestId} {
+      // Allow individual lookup by guestId (for confirmation redirect/edit) without exposing full guest list/emails
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if isValidRsvp(guestId);
+      allow delete: if isAdmin();
+    }
+
+    match /registry/{itemId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isValidRegistryUpdate();
+    }
+
+    match /blessings/{guestId} {
+      allow read: if true;
+      allow create, update: if isValidBlessing(guestId);
+      allow delete: if isAdmin();
+    }
+  }
+}

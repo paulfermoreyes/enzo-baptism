@@ -1,6 +1,10 @@
 import { Sparkles } from 'lucide-react';
 
-export function Footer() {
+interface FooterProps {
+  onOpenAdmin?: () => void;
+}
+
+export function Footer({ onOpenAdmin }: FooterProps) {
   return (
     <footer className="mt-16 border-t border-gold/25 bg-parchment/80 py-10 px-4 text-center">
       <div className="mx-auto max-w-3xl">
@@ -17,6 +21,17 @@ export function Footer() {
         <p className="mt-3 font-label text-xs tracking-wider text-ink-muted">
           © 2027 The Lorenzo Paul Family. Blessed with eternal love.
         </p>
+        {onOpenAdmin && (
+          <div className="mt-4 no-print">
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              className="font-label text-[11px] uppercase tracking-wider text-ink-muted/70 hover:text-primary-container underline underline-offset-4 cursor-pointer"
+            >
+              Host Admin
+            </button>
+          </div>
+        )}
       </div>
     </footer>
   );

@@ -59,7 +59,7 @@ export function ConfirmationPass({
   const reservedGift = registryItems.find((i) => i.id === submission.reservedGiftId);
 
   const handleShare = async () => {
-    const shareText = `Enzo's Christening Day — ${EVENT_INFO.dateDisplay}\nCeremony: ${EVENT_INFO.ceremony.time} at ${EVENT_INFO.ceremony.shortVenue}\nReception: ${EVENT_INFO.reception.time} at ${EVENT_INFO.reception.shortVenue}\nRSVP ID: ${submission.rsvpCode}`;
+    const shareText = `Enzo's Christening Day — ${EVENT_INFO.dateDisplay}\nCeremony: ${EVENT_INFO.ceremony.time} at ${EVENT_INFO.ceremony.shortVenue}\nReception: ${EVENT_INFO.reception.time} at ${EVENT_INFO.reception.shortVenue}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "Enzo's Christening Schedule", text: shareText });
@@ -84,7 +84,7 @@ export function ConfirmationPass({
               Status: RSVP Confirmed • Response Recorded
             </p>
             <p className="font-label text-sm font-semibold text-primary-container">
-              RSVP ID: {submission.rsvpCode}
+              {submission.guestName}
             </p>
           </div>
         </div>
@@ -99,12 +99,12 @@ export function ConfirmationPass({
         </button>
       </div>
 
-      {/* Main Confirmation Pass Card */}
+      {/* Main Confirmation Card */}
       <StationeryCard archTop className="text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-sky-soft px-4 py-1.5 border border-gold/30 mb-4">
           <Sparkles className="w-4 h-4 text-gold" aria-hidden="true" />
           <span className="font-label text-xs font-semibold uppercase tracking-[0.14em] text-primary-container">
-            {submission.tier}
+            RSVP Confirmation
           </span>
         </div>
 
@@ -119,7 +119,7 @@ export function ConfirmationPass({
         <div
           className="no-print mt-6 inline-flex flex-wrap justify-center gap-2 rounded-full border border-gold/35 bg-surface p-1.5"
           role="group"
-          aria-label="Pass view mode"
+          aria-label="Confirmation view mode"
         >
           <button
             type="button"
@@ -151,66 +151,32 @@ export function ConfirmationPass({
 
         <CeremonialRule />
 
-        {/* Digital Pass Box */}
+        {/* Confirmation Summary Box */}
         <div className="mx-auto max-w-2xl rounded-2xl border border-gold/45 bg-surface p-6 sm:p-8 text-left">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div>
-              <p className="font-label text-xs font-semibold uppercase tracking-[0.16em] text-secondary">
-                Baby Enzo • Digital Event Pass
-              </p>
-              <h2 className="mt-1 font-display text-3xl font-medium text-primary">
-                {submission.guestName}
-              </h2>
+          <p className="font-label text-xs font-semibold uppercase tracking-[0.16em] text-secondary">
+            Baby Enzo • Confirmed Guest
+          </p>
+          <h2 className="mt-1 font-display text-3xl font-medium text-primary">
+            {submission.guestName}
+          </h2>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full bg-sky-soft px-3.5 py-1 font-label text-xs font-semibold text-primary-container">
-                  {previewMode === 'in-person'
-                    ? `${submission.guestCount} Confirmed ${submission.guestCount === 1 ? 'Guest' : 'Guests'}`
-                    : 'Remote Prayer Guest'}
-                </span>
-                <span className="rounded-full bg-parchment border border-gold/40 px-3.5 py-1 font-label text-xs font-semibold text-secondary">
-                  {previewMode === 'in-person' ? submission.tableNumber : 'Private Altar Stream'}
-                </span>
-                {reservedGift && (
-                  <span className="rounded-full bg-parchment border border-gold/40 px-3.5 py-1 font-label text-xs font-semibold text-primary-container">
-                    Gift: {reservedGift.title}
-                    {submission.pledgeAmount ? ` (${submission.pledgeAmount})` : ''}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Stylized Keepsake QR SVG */}
-            <div className="flex flex-col items-center shrink-0 rounded-xl border border-gold/35 bg-white p-3">
-              <svg
-                className="w-24 h-24 text-primary-container"
-                viewBox="0 0 100 100"
-                fill="currentColor"
-                role="img"
-                aria-label={`QR Pass for ${submission.rsvpCode}`}
-              >
-                <rect x="6" y="6" width="28" height="28" rx="4" fill="none" stroke="currentColor" strokeWidth="5" />
-                <rect x="14" y="14" width="12" height="12" rx="2" />
-                <rect x="66" y="6" width="28" height="28" rx="4" fill="none" stroke="currentColor" strokeWidth="5" />
-                <rect x="74" y="14" width="12" height="12" rx="2" />
-                <rect x="6" y="66" width="28" height="28" rx="4" fill="none" stroke="currentColor" strokeWidth="5" />
-                <rect x="14" y="74" width="12" height="12" rx="2" />
-                <rect x="44" y="10" width="8" height="8" />
-                <rect x="44" y="26" width="12" height="8" />
-                <rect x="10" y="44" width="10" height="8" />
-                <rect x="28" y="44" width="16" height="10" />
-                <rect x="52" y="42" width="12" height="12" fill="#c5a059" />
-                <rect x="72" y="44" width="18" height="8" />
-                <rect x="44" y="64" width="10" height="10" />
-                <rect x="62" y="64" width="14" height="8" />
-                <rect x="82" y="64" width="10" height="16" />
-                <rect x="44" y="82" width="20" height="10" />
-                <rect x="72" y="82" width="12" height="10" />
-              </svg>
-              <span className="mt-1.5 font-label text-[10px] font-semibold tracking-wider text-ink-muted">
-                {submission.rsvpCode}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-sky-soft px-3.5 py-1 font-label text-xs font-semibold text-primary-container">
+              {previewMode === 'in-person'
+                ? `${submission.guestCount} Confirmed ${submission.guestCount === 1 ? 'Guest' : 'Guests'}`
+                : 'Remote Prayer Guest'}
+            </span>
+            {submission.dietaryNotes && previewMode === 'in-person' && (
+              <span className="rounded-full bg-parchment border border-gold/40 px-3.5 py-1 font-label text-xs font-semibold text-secondary">
+                Notes: {submission.dietaryNotes}
               </span>
-            </div>
+            )}
+            {reservedGift && (
+              <span className="rounded-full bg-parchment border border-gold/40 px-3.5 py-1 font-label text-xs font-semibold text-primary-container">
+                Gift: {reservedGift.title}
+                {submission.pledgeAmount ? ` (${submission.pledgeAmount})` : ''}
+              </span>
+            )}
           </div>
 
           <p className="mt-6 pt-4 border-t border-gold/25 font-body italic text-base text-ink-muted text-center">

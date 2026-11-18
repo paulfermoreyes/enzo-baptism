@@ -1,13 +1,12 @@
-export type PageView = 'invitation' | 'rsvp' | 'pass';
+export type PageView = 'invitation' | 'rsvp' | 'pass' | 'admin';
 
 export type AttendanceMode = 'in-person' | 'remote';
 
 export interface GuestRecord {
   id: string;
   displayName: string;
-  tier: string;
+  searchName: string;
   reservedSeats: number;
-  tableNumber: string;
   rsvpCode: string;
 }
 
@@ -17,8 +16,10 @@ export interface RegistryItem {
   title: string;
   priceLabel: string;
   description: string;
-  isFund?: boolean;
-  reservedBy?: string;
+  isFund: boolean;
+  allowMultiple: boolean;
+  reservedByGuestId: string | null;
+  reservedByGuestIds?: string[];
 }
 
 export interface BlessingNote {
@@ -28,19 +29,20 @@ export interface BlessingNote {
   role: string;
   message: string;
   folioPage?: string;
+  createdAt?: number;
 }
 
 export interface RsvpSubmission {
+  guestId: string;
   guestName: string;
   email: string;
   attendance: AttendanceMode;
   guestCount: number;
   dietaryNotes: string;
   reservedGiftId: string | null;
-  pledgeAmount?: string;
+  pledgeAmount?: string | null;
   blessingMessage: string;
   rsvpCode: string;
-  tier: string;
-  tableNumber: string;
   submittedAt: string;
+  updatedAt?: string;
 }

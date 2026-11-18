@@ -1,4 +1,4 @@
-import type { BlessingNote, GuestRecord, RegistryItem, RsvpSubmission } from '../types/baptism';
+import type { BlessingNote, GuestRecord, RegistryItem } from '../types/baptism';
 
 export const EVENT_INFO = {
   babyFullName: 'Lorenzo Paul',
@@ -42,30 +42,27 @@ export const EVENT_INFO = {
   },
 };
 
-export const VIP_GUESTS: GuestRecord[] = [
+export const INITIAL_GUESTS: GuestRecord[] = [
   {
     id: 'elena-marco',
     displayName: 'Elena & Marco Santos',
-    tier: 'Godparent Tier',
+    searchName: 'elena & marco santos',
     reservedSeats: 2,
-    tableNumber: 'Table No. 3',
-    rsvpCode: '#ENZO-2027-GODP-88',
+    rsvpCode: '#ENZO-2027-01',
   },
   {
     id: 'angel-carlo',
     displayName: 'Angel & Carlo Reyes',
-    tier: 'Godparent Tier',
+    searchName: 'angel & carlo reyes',
     reservedSeats: 2,
-    tableNumber: 'Table No. 2',
-    rsvpCode: '#ENZO-2027-GODP-42',
+    rsvpCode: '#ENZO-2027-02',
   },
   {
     id: 'marco-bea',
     displayName: 'Marco & Bea Mendoza',
-    tier: 'Beloved Family',
+    searchName: 'marco & bea mendoza',
     reservedSeats: 3,
-    tableNumber: 'Table No. 5',
-    rsvpCode: '#ENZO-2027-FAM-19',
+    rsvpCode: '#ENZO-2027-03',
   },
 ];
 
@@ -77,6 +74,9 @@ export const INITIAL_REGISTRY_ITEMS: RegistryItem[] = [
     priceLabel: '$75',
     description:
       "Handmade cedar keepsake chest for preserving Enzo's hospital bracelet, baptismal stole, and first curls.",
+    isFund: false,
+    allowMultiple: false,
+    reservedByGuestId: null,
   },
   {
     id: 'silver-cup',
@@ -85,6 +85,9 @@ export const INITIAL_REGISTRY_ITEMS: RegistryItem[] = [
     priceLabel: '$120',
     description:
       'Traditional heirloom engraved with his baptismal date and patron saint blessing motif.',
+    isFund: false,
+    allowMultiple: false,
+    reservedByGuestId: null,
   },
   {
     id: 'montessori-blocks',
@@ -93,22 +96,33 @@ export const INITIAL_REGISTRY_ITEMS: RegistryItem[] = [
     priceLabel: '$45',
     description:
       'BPA-free sensory stacking blocks featuring textured animals, numerals, and gentle chiming bells.',
+    isFund: false,
+    allowMultiple: false,
+    reservedByGuestId: null,
   },
   {
-    id: 'swaddle-set',
-    category: 'Nursery Comfort',
-    title: 'Organic Swaddle & Sleep Set',
-    priceLabel: '$55',
+    id: 'diapers-bundle',
+    category: 'Daily Essentials',
+    title: 'Newborn & Size-M Diapers',
+    priceLabel: 'Consumable',
     description:
-      'Triple-layer cloud bamboo muslin swaddles with gentle cloud embroidery.',
+      'Soft, breathable diapers for Enzo’s growing months—multiple guests are welcome to pledge a pack.',
+    isFund: false,
+    allowMultiple: true,
+    reservedByGuestId: null,
+    reservedByGuestIds: [],
   },
   {
-    id: 'childrens-bible',
-    category: 'Spiritual Gift',
-    title: 'Illustrated Children’s Bible',
-    priceLabel: '$60',
+    id: 'wet-wipes-pack',
+    category: 'Daily Essentials',
+    title: 'Sensitive Unscented Wet Wipes',
+    priceLabel: 'Consumable',
     description:
-      'Gold-gilded heirloom edition with personalized dedication page for godparent blessings.',
+      'Gentle 99% pure water baby wipes for everyday care—multiple pledges warmly appreciated.',
+    isFund: false,
+    allowMultiple: true,
+    reservedByGuestId: null,
+    reservedByGuestIds: [],
   },
   {
     id: 'educational-trust',
@@ -118,6 +132,9 @@ export const INITIAL_REGISTRY_ITEMS: RegistryItem[] = [
     description:
       "Direct contribution to Lorenzo's future schooling and developmental savings account.",
     isFund: true,
+    allowMultiple: true,
+    reservedByGuestId: null,
+    reservedByGuestIds: [],
   },
 ];
 
@@ -130,6 +147,7 @@ export const INITIAL_BLESSINGS: BlessingNote[] = [
     message:
       'Dearest little Enzo, may God’s radiant light guide every tender step you take. We promise to stand by your side with boundless love, wisdom, and laughter!',
     folioPage: 'Page 11',
+    createdAt: 1700000001000,
   },
   {
     id: 'b-2',
@@ -139,6 +157,7 @@ export const INITIAL_BLESSINGS: BlessingNote[] = [
     message:
       'Welcome to Christ’s warm embrace, baby Lorenzo Paul! You bring our entire family so much peace and sunshine. We cannot wait to celebrate your special day.',
     folioPage: 'Page 12',
+    createdAt: 1700000002000,
   },
   {
     id: 'b-3',
@@ -148,6 +167,7 @@ export const INITIAL_BLESSINGS: BlessingNote[] = [
     message:
       'May God bless you with abundant wisdom, pure wonder, and eternal peace every step of your sacred journey, sweet Enzo. We love you with all our hearts.',
     folioPage: 'Page 14',
+    createdAt: 1700000003000,
   },
 ];
 
@@ -181,18 +201,3 @@ export const FAQ_ITEMS = [
       'Loved ones joining remotely can RSVP as "Celebrating in Spirit" to receive the private Basilica livestream link and have their blessing inscribed in Enzo’s Memory Folio.',
   },
 ];
-
-export const DEFAULT_SUBMISSION: RsvpSubmission = {
-  guestName: 'Elena & Marco Santos',
-  email: 'elena.santos@example.com',
-  attendance: 'in-person',
-  guestCount: 2,
-  dietaryNotes: '',
-  reservedGiftId: 'childrens-bible',
-  blessingMessage:
-    'May God bless you with abundant wisdom, pure wonder, and eternal peace every step of your sacred journey, sweet Enzo. We love you with all our hearts.',
-  rsvpCode: '#ENZO-2027-GODP-88',
-  tier: 'Honored Godparent Confirmation',
-  tableNumber: 'Table No. 3',
-  submittedAt: '2026-11-18',
-};

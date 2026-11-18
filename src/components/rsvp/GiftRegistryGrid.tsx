@@ -1,8 +1,9 @@
-import { Check, Gift, PiggyBank } from 'lucide-react';
+import { Check, Gift, Lock, PiggyBank } from 'lucide-react';
 import type { RegistryItem } from '../../types/baptism';
 
 interface GiftRegistryGridProps {
   items: RegistryItem[];
+  currentGuestId: string | null;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   pledgeAmount: string;
@@ -11,6 +12,7 @@ interface GiftRegistryGridProps {
 
 export function GiftRegistryGrid({
   items,
+  currentGuestId,
   selectedId,
   onSelect,
   pledgeAmount,
@@ -28,7 +30,7 @@ export function GiftRegistryGrid({
               Baby Enzo’s Gift Registry
             </h2>
             <p className="font-body text-base text-ink-muted">
-              Select an heirloom keepsake or contribute to his educational fund.
+              Select an heirloom keepsake, pledge a consumable essential, or contribute to his educational fund.
             </p>
           </div>
         </div>
@@ -40,13 +42,20 @@ export function GiftRegistryGrid({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((item) => {
           const isSelected = selectedId === item.id;
+          const isReservedByOther =
+            !item.allowMultiple &&
+            Boolean(item.reservedByGuestId && item.reservedByGuestId !== currentGuestId);
+          const pledgeCount = item.reservedByGuestIds?.length ?? 0;
+
           return (
             <div
               key={item.id}
               className={`flex flex-col justify-between rounded-xl border p-5 transition-all ${
-                isSelected
-                  ? 'border-gold bg-sky-soft/45 shadow-sm'
-                  : 'border-gold/30 bg-surface hover:border-gold/70'
+                isReservedByOther
+                  ? 'border-outline-variant/50 bg-surface-container/60 opacity-75'
+                  : isSelected
+                    ? 'border-gold bg-sky-soft/45 shadow-sm'
+                    : 'border-gold/30 bg-surface hover:border-gold/70'
               }`}
             >
               <div>
@@ -72,6 +81,12 @@ export function GiftRegistryGrid({
                   {item.description}
                 </p>
 
+                {item.allowMultiple && pledgeCount > 0 && (
+                  <p className="mt-2 font-label text-xs font-semibold text-secondary">
+                    {pledgeCount} {pledgeCount === 1 ? 'guest has' : 'guests have'} pledged
+                  </p>
+                )}
+
                 {item.isFund && isSelected && (
                   <div className="mt-3">
                     <label
@@ -95,22 +110,34 @@ export function GiftRegistryGrid({
 
               <button
                 type="button"
+                disabled={isReservedByOther}
                 aria-pressed={isSelected}
                 onClick={() => onSelect(isSelected ? null : item.id)}
-                className={`mt-4 min-h-10 w-full inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 font-label text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-gold text-primary'
-                    : 'border border-gold/60 bg-parchment text-primary-container hover:bg-sky-soft/70'
+                className={`mt-4 min-h-10 w-full inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 font-label text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  isReservedByOther
+                    ? 'bg-surface-high text-ink-muted cursor-not-allowed'
+                    : isSelected
+                      ? 'bg-gold text-primary cursor-pointer'
+                      : 'border border-gold/60 bg-parchment text-primary-container hover:bg-sky-soft/70 cursor-pointer'
                 }`}
               >
-                {isSelected && <Check className="w-3.5 h-3.5" aria-hidden="true" />}
-                {isSelected
-                  ? item.isFund
-                    ? 'Pledge Selected'
-                    : 'Reserved by You'
-                  : item.isFund
-                    ? 'Click to Pledge'
-                    : 'Click to Reserve'}
+                {isReservedByOther ? (
+                  <>
+                    <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                    Reserved
+                  </>
+                ) : (
+                  <>
+                    {isSelected && <Check className="w-3.5 h-3.5" aria-hidden="true" />}
+                    {isSelected
+                      ? item.allowMultiple
+                        ? 'Pledge Selected'
+                        : 'Reserved by You'
+                      : item.allowMultiple
+                        ? 'Click to Pledge'
+                        : 'Click to Reserve'}
+                  </>
+                )}
               </button>
             </div>
           );

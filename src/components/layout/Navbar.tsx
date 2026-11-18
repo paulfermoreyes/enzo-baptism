@@ -7,13 +7,13 @@ interface NavbarProps {
   hasConfirmedPass: boolean;
 }
 
-const NAV_ITEMS: { id: PageView; label: string }[] = [
-  { id: 'invitation', label: 'Invitation' },
-  { id: 'rsvp', label: 'RSVP & Registry' },
-  { id: 'pass', label: 'Event Pass' },
-];
-
 export function Navbar({ currentView, onNavigate, hasConfirmedPass }: NavbarProps) {
+  const navItems: { id: PageView; label: string }[] = [
+    { id: 'invitation', label: 'Invitation' },
+    { id: 'rsvp', label: 'RSVP & Registry' },
+    ...(hasConfirmedPass ? [{ id: 'pass' as PageView, label: 'Confirmation' }] : []),
+  ];
+
   return (
     <header className="sticky top-0 z-30 border-b border-gold/25 bg-parchment/90 backdrop-blur-md">
       <a
@@ -43,7 +43,7 @@ export function Navbar({ currentView, onNavigate, hasConfirmedPass }: NavbarProp
         </button>
 
         <nav aria-label="Primary" className="flex items-center gap-1.5 sm:gap-2">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = currentView === item.id;
             return (
               <button

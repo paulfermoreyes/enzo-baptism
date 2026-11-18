@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Sparkles } from 'lucide-react';
+import { INITIAL_BLESSINGS, INITIAL_REGISTRY_ITEMS } from './data/baptismData';
 import {
-  DEFAULT_SUBMISSION,
-  INITIAL_BLESSINGS,
-  INITIAL_REGISTRY_ITEMS,
-  VIP_GUESTS,
-} from './data/baptismData';
+  subscribeBlessings,
+  subscribeRegistry,
+  submitRsvpToStore,
+} from './services/baptismService';
+import { isFirebaseConfigured } from './lib/firebase';
 import type {
   BlessingNote,
   GuestRecord,
@@ -22,13 +23,15 @@ import { BlessingsWall } from './components/invitation/BlessingsWall';
 import { GuestLookup } from './components/rsvp/GuestLookup';
 import { RsvpForm } from './components/rsvp/RsvpForm';
 import { ConfirmationPass } from './components/pass/ConfirmationPass';
+import { AdminPage } from './components/admin/AdminPage';
 import { StationeryCard } from './components/ui/StationeryCard';
 import { ModalDialog } from './components/ui/ModalDialog';
 
 const PAGE_TITLES: Record<PageView, string> = {
   invitation: 'Enzo’s Christening Day | Lorenzo Paul Holy Baptism',
   rsvp: 'RSVP & Gift Registry | Lorenzo Paul Holy Baptism',
-  pass: 'Confirmation & Event Pass | Lorenzo Paul Holy Baptism',
+  pass: 'Confirmation | Lorenzo Paul Holy Baptism',
+  admin: 'Host Admin | Lorenzo Paul Holy Baptism',
 };
 
 const PASTEL_SWATCHES = [
@@ -38,13 +41,20 @@ const PASTEL_SWATCHES = [
   { name: 'Gentle Slate Navy', hex: '#2B445B', note: 'Evening & Suiting' },
 ];
 
+function getInitialView(): PageView {
+  if (typeof window !== 'undefined' && window.location.hash === '#admin') {
+    return 'admin';
+  }
+  return 'invitation';
+}
+
 export function App() {
-  const [currentView, setCurrentView] = useState<PageView>('invitation');
-  const [verifiedGuest, setVerifiedGuest] = useState<GuestRecord | null>(VIP_GUESTS[0]);
-  const [registryItems] = useState<RegistryItem[]>(INITIAL_REGISTRY_ITEMS);
+  const [currentView, setCurrentView] = useState<PageView>(getInitialView);
+  const [verifiedGuest, setVerifiedGuest] = useState<GuestRecord | null>(null);
+  const [registryItems, setRegistryItems] = useState<RegistryItem[]>(INITIAL_REGISTRY_ITEMS);
   const [blessings, setBlessings] = useState<BlessingNote[]>(INITIAL_BLESSINGS);
-  const [submission, setSubmission] = useState<RsvpSubmission>(DEFAULT_SUBMISSION);
-  const [hasConfirmedPass, setHasConfirmedPass] = useState(true);
+  const [submission, setSubmission] = useState<RsvpSubmission | null>(null);
+  const [hasConfirmedPass, setHasConfirmedPass] = useState(false);
 
   const [dressCodeOpen, setDressCodeOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -54,27 +64,80 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentView]);
 
-  const handleSubmitRsvp = (nextSubmission: RsvpSubmission) => {
+  useEffect(() => {
+    const onHashChange = () => {
+      if (window.location.hash === '#admin') {
+        setCurrentView('admin');
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    const unsubRegistry = subscribeRegistry(setRegistryItems);
+    const unsubBlessings = subscribeBlessings(setBlessings);
+    return () => {
+      unsubRegistry();
+      unsubBlessings();
+    };
+  }, []);
+
+  const navigateTo = (view: PageView) => {
+    if (view !== 'admin' && window.location.hash === '#admin') {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    if (view === 'admin') {
+      window.location.hash = 'admin';
+    }
+    setCurrentView(view);
+  };
+
+  const handleSubmitRsvp = async (nextSubmission: RsvpSubmission) => {
+    const previousGiftId = submission?.reservedGiftId ?? null;
+    await submitRsvpToStore(nextSubmission, previousGiftId);
+
     setSubmission(nextSubmission);
     setHasConfirmedPass(true);
 
-    if (nextSubmission.blessingMessage) {
-      const words = nextSubmission.guestName.split(/\s+/).filter(Boolean);
-      const initials =
-        words.length >= 2
-          ? `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase()
-          : nextSubmission.guestName.slice(0, 2).toUpperCase();
+    // Local fallback updates when Firebase is not configured
+    if (!isFirebaseConfigured) {
+      setRegistryItems((prev) =>
+        prev.map((item) => {
+          if (item.id === previousGiftId && item.id !== nextSubmission.reservedGiftId) {
+            return item.allowMultiple
+              ? {
+                  ...item,
+                  reservedByGuestIds: (item.reservedByGuestIds ?? []).filter(
+                    (id) => id !== nextSubmission.guestId
+                  ),
+                }
+              : { ...item, reservedByGuestId: null };
+          }
+          if (item.id === nextSubmission.reservedGiftId) {
+            return item.allowMultiple
+              ? {
+                  ...item,
+                  reservedByGuestIds: Array.from(
+                    new Set([...(item.reservedByGuestIds ?? []), nextSubmission.guestId])
+                  ),
+                }
+              : { ...item, reservedByGuestId: nextSubmission.guestId };
+          }
+          return item;
+        })
+      );
 
-      setBlessings((prev) => {
-        const alreadyExists = prev.some(
-          (b) =>
-            b.author.toLowerCase() === nextSubmission.guestName.toLowerCase() &&
-            b.message === nextSubmission.blessingMessage
-        );
-        if (alreadyExists) return prev;
-        return [
+      if (nextSubmission.blessingMessage) {
+        const words = nextSubmission.guestName.split(/\s+/).filter(Boolean);
+        const initials =
+          words.length >= 2
+            ? `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase()
+            : nextSubmission.guestName.slice(0, 2).toUpperCase();
+
+        setBlessings((prev) => [
           {
-            id: `b-${Date.now()}`,
+            id: nextSubmission.guestId,
             author: nextSubmission.guestName,
             initials,
             role:
@@ -83,9 +146,9 @@ export function App() {
                 : 'Celebrating in Spirit',
             message: nextSubmission.blessingMessage,
           },
-          ...prev,
-        ];
-      });
+          ...prev.filter((b) => b.id !== nextSubmission.guestId),
+        ]);
+      }
     }
 
     setConfirmModalOpen(true);
@@ -95,7 +158,7 @@ export function App() {
     <div className="min-h-screen flex flex-col">
       <Navbar
         currentView={currentView}
-        onNavigate={setCurrentView}
+        onNavigate={navigateTo}
         hasConfirmedPass={hasConfirmedPass}
       />
 
@@ -103,14 +166,14 @@ export function App() {
         {currentView === 'invitation' && (
           <>
             <HeroSection
-              onGoToRsvp={() => setCurrentView('rsvp')}
+              onGoToRsvp={() => navigateTo('rsvp')}
               onOpenDressCode={() => setDressCodeOpen(true)}
             />
             <ScheduleSection />
             <FaqSection />
             <BlessingsWall
               blessings={blessings}
-              onLeaveBlessing={() => setCurrentView('rsvp')}
+              onLeaveBlessing={() => navigateTo('rsvp')}
             />
           </>
         )}
@@ -133,30 +196,52 @@ export function App() {
 
               <GuestLookup
                 verifiedGuest={verifiedGuest}
-                onVerify={(guest) => setVerifiedGuest(guest)}
-                onAccessPass={() => setCurrentView('pass')}
+                onVerify={(guest) => {
+                  setVerifiedGuest(guest);
+                  setSubmission(null);
+                }}
+                onFoundExistingRsvp={(guest, existingRsvp) => {
+                  setVerifiedGuest(guest);
+                  setSubmission(existingRsvp);
+                  setHasConfirmedPass(true);
+                  navigateTo('pass');
+                }}
+                onClearGuest={() => {
+                  setVerifiedGuest(null);
+                  setSubmission(null);
+                }}
               />
 
-              <RsvpForm
-                verifiedGuest={verifiedGuest}
-                registryItems={registryItems}
-                initialSubmission={submission}
-                onSubmitRsvp={handleSubmitRsvp}
-              />
+              {verifiedGuest && (
+                <RsvpForm
+                  verifiedGuest={verifiedGuest}
+                  registryItems={registryItems}
+                  initialSubmission={submission}
+                  onSubmitRsvp={handleSubmitRsvp}
+                />
+              )}
             </StationeryCard>
           </div>
         )}
 
-        {currentView === 'pass' && (
+        {currentView === 'pass' && submission && (
           <ConfirmationPass
             submission={submission}
             registryItems={registryItems}
-            onEditRsvp={() => setCurrentView('rsvp')}
+            onEditRsvp={() => navigateTo('rsvp')}
+          />
+        )}
+
+        {currentView === 'admin' && (
+          <AdminPage
+            registryItems={registryItems}
+            blessings={blessings}
+            onBackToSite={() => navigateTo('invitation')}
           />
         )}
       </main>
 
-      <Footer />
+      <Footer onOpenAdmin={() => navigateTo('admin')} />
 
       {/* Dress Code Modal */}
       <ModalDialog
@@ -201,41 +286,43 @@ export function App() {
       </ModalDialog>
 
       {/* RSVP Confirmation Modal */}
-      <ModalDialog
-        open={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
-        title="You Are Confirmed!"
-      >
-        <div className="flex items-start gap-3">
-          <CheckCircle2 className="w-6 h-6 text-gold shrink-0 mt-0.5" aria-hidden="true" />
-          <p className="font-body text-lg text-ink-muted leading-relaxed">
-            Thank you, <strong className="text-primary-container">{submission.guestName}</strong>! Your RSVP ({submission.rsvpCode}) and blessing for Baby Enzo have been lovingly recorded.
-          </p>
-        </div>
+      {submission && (
+        <ModalDialog
+          open={confirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
+          title="You Are Confirmed!"
+        >
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-6 h-6 text-gold shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="font-body text-lg text-ink-muted leading-relaxed">
+              Thank you, <strong className="text-primary-container">{submission.guestName}</strong>! Your RSVP and blessing for Baby Enzo have been lovingly recorded.
+            </p>
+          </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setConfirmModalOpen(false);
-              setCurrentView('invitation');
-            }}
-            className="min-h-11 rounded-full border border-gold bg-white px-5 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary-container hover:bg-sky-soft/70 cursor-pointer"
-          >
-            Close & View Invitation
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setConfirmModalOpen(false);
-              setCurrentView('pass');
-            }}
-            className="min-h-11 rounded-full bg-gold px-6 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary hover:bg-gold-bright/90 cursor-pointer"
-          >
-            View Confirmation Pass
-          </button>
-        </div>
-      </ModalDialog>
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmModalOpen(false);
+                navigateTo('invitation');
+              }}
+              className="min-h-11 rounded-full border border-gold bg-white px-5 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary-container hover:bg-sky-soft/70 cursor-pointer"
+            >
+              Close & View Invitation
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmModalOpen(false);
+                navigateTo('pass');
+              }}
+              className="min-h-11 rounded-full bg-gold px-6 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary hover:bg-gold-bright/90 cursor-pointer"
+            >
+              View Confirmation
+            </button>
+          </div>
+        </ModalDialog>
+      )}
     </div>
   );
 }

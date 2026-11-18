@@ -1,13 +1,13 @@
 import { useId, useRef, useState } from 'react';
-import { AlertCircle, ArrowRight, CheckCircle2, Heart, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Heart, Loader2, Sparkles } from 'lucide-react';
 import type { AttendanceMode, GuestRecord, RegistryItem, RsvpSubmission } from '../../types/baptism';
 import { GiftRegistryGrid } from './GiftRegistryGrid';
 
 interface RsvpFormProps {
-  verifiedGuest: GuestRecord | null;
+  verifiedGuest: GuestRecord;
   registryItems: RegistryItem[];
-  initialSubmission: RsvpSubmission;
-  onSubmitRsvp: (submission: RsvpSubmission) => void;
+  initialSubmission: RsvpSubmission | null;
+  onSubmitRsvp: (submission: RsvpSubmission) => Promise<void>;
 }
 
 export function RsvpForm({
@@ -17,24 +17,30 @@ export function RsvpForm({
   onSubmitRsvp,
 }: RsvpFormProps) {
   const [guestName, setGuestName] = useState(
-    verifiedGuest?.displayName ?? initialSubmission.guestName
+    initialSubmission?.guestName ?? verifiedGuest.displayName
   );
-  const [email, setEmail] = useState(initialSubmission.email);
-  const [attendance, setAttendance] = useState<AttendanceMode>(initialSubmission.attendance);
+  const [email, setEmail] = useState(initialSubmission?.email ?? '');
+  const [attendance, setAttendance] = useState<AttendanceMode>(
+    initialSubmission?.attendance ?? 'in-person'
+  );
   const [guestCount, setGuestCount] = useState<number>(
-    verifiedGuest?.reservedSeats ?? initialSubmission.guestCount
+    initialSubmission?.guestCount ?? verifiedGuest.reservedSeats
   );
-  const [dietaryNotes, setDietaryNotes] = useState(initialSubmission.dietaryNotes);
+  const [dietaryNotes, setDietaryNotes] = useState(initialSubmission?.dietaryNotes ?? '');
   const [selectedGiftId, setSelectedGiftId] = useState<string | null>(
-    initialSubmission.reservedGiftId
+    initialSubmission?.reservedGiftId ?? null
   );
-  const [pledgeAmount, setPledgeAmount] = useState(initialSubmission.pledgeAmount ?? '');
-  const [blessingMessage, setBlessingMessage] = useState(initialSubmission.blessingMessage);
+  const [pledgeAmount, setPledgeAmount] = useState(initialSubmission?.pledgeAmount ?? '');
+  const [blessingMessage, setBlessingMessage] = useState(
+    initialSubmission?.blessingMessage ?? ''
+  );
 
   // Track field-level post-interaction invalid state for ARIA synchronization
   const [nameInvalid, setNameInvalid] = useState(false);
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [liveMessage, setLiveMessage] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -49,13 +55,21 @@ export function RsvpForm({
   const dietaryId = useId();
   const blessingId = useId();
 
-  // Keep guestName synced when user verifies a different guest in step 1
-  const [lastVerifiedId, setLastVerifiedId] = useState<string | null>(verifiedGuest?.id ?? null);
-  if (verifiedGuest && verifiedGuest.id !== lastVerifiedId) {
+  // Keep form synced when user verifies a different guest in step 1
+  const [lastVerifiedId, setLastVerifiedId] = useState<string>(verifiedGuest.id);
+  if (verifiedGuest.id !== lastVerifiedId) {
     setLastVerifiedId(verifiedGuest.id);
-    setGuestName(verifiedGuest.displayName);
-    setGuestCount(verifiedGuest.reservedSeats);
+    setGuestName(initialSubmission?.guestName ?? verifiedGuest.displayName);
+    setEmail(initialSubmission?.email ?? '');
+    setAttendance(initialSubmission?.attendance ?? 'in-person');
+    setGuestCount(initialSubmission?.guestCount ?? verifiedGuest.reservedSeats);
+    setDietaryNotes(initialSubmission?.dietaryNotes ?? '');
+    setSelectedGiftId(initialSubmission?.reservedGiftId ?? null);
+    setPledgeAmount(initialSubmission?.pledgeAmount ?? '');
+    setBlessingMessage(initialSubmission?.blessingMessage ?? '');
     setNameInvalid(false);
+    setEmailInvalid(false);
+    setSubmitError(null);
   }
 
   const syncControlValidity = (
@@ -74,13 +88,14 @@ export function RsvpForm({
     return !isInvalid;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     const isNameOk = syncControlValidity(
       nameInputRef.current,
       setNameInvalid,
-      'Full Name: Please enter your name as it should appear on your keepsake pass.'
+      'Full Name: Please enter your name as it should appear on your confirmation.'
     );
     const isEmailOk = syncControlValidity(
       emailInputRef.current,
@@ -97,21 +112,37 @@ export function RsvpForm({
       return;
     }
 
-    onSubmitRsvp({
-      guestName: guestName.trim(),
-      email: email.trim(),
-      attendance,
-      guestCount: attendance === 'in-person' ? guestCount : 1,
-      dietaryNotes: dietaryNotes.trim(),
-      reservedGiftId: selectedGiftId,
-      pledgeAmount: selectedGiftId === 'educational-trust' ? pledgeAmount.trim() : undefined,
-      blessingMessage: blessingMessage.trim(),
-      rsvpCode: verifiedGuest?.rsvpCode ?? '#ENZO-2027-GUEST-88',
-      tier: verifiedGuest?.tier ?? 'Honored Guest Confirmation',
-      tableNumber: verifiedGuest?.tableNumber ?? 'Table No. 4',
-      submittedAt: new Date().toISOString().slice(0, 10),
-    });
+    setIsSubmitting(true);
+    try {
+      await onSubmitRsvp({
+        guestId: verifiedGuest.id,
+        guestName: guestName.trim(),
+        email: email.trim(),
+        attendance,
+        guestCount: attendance === 'in-person' ? guestCount : 1,
+        dietaryNotes: dietaryNotes.trim(),
+        reservedGiftId: selectedGiftId,
+        pledgeAmount:
+          selectedGiftId === 'educational-trust' && pledgeAmount.trim()
+            ? pledgeAmount.trim()
+            : null,
+        blessingMessage: blessingMessage.trim(),
+        rsvpCode: verifiedGuest.rsvpCode,
+        submittedAt: initialSubmission?.submittedAt ?? new Date().toISOString().slice(0, 10),
+      });
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : 'Could not save your RSVP right now. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const maxSeats = Math.max(5, verifiedGuest.reservedSeats);
+  const seatOptions = Array.from({ length: maxSeats }, (_, idx) => idx + 1);
 
   return (
     <form
@@ -237,7 +268,7 @@ export function RsvpForm({
                 syncControlValidity(
                   nameInputRef.current,
                   setNameInvalid,
-                  'Guest Name: Please enter your name as it should appear on your keepsake pass.'
+                  'Guest Name: Please enter your name as it should appear on your confirmation.'
                 )
               }
               className={`celestial-input w-full rounded-lg border border-gold-light bg-white px-4 py-2.5 text-ink ${
@@ -249,7 +280,7 @@ export function RsvpForm({
               className="field-error items-center gap-1.5 mt-1.5 font-label text-xs font-semibold text-error"
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-label="Error" />
-              <span>Please enter your name for the guest pass.</span>
+              <span>Please enter your name for the confirmation.</span>
             </div>
           </div>
 
@@ -261,7 +292,7 @@ export function RsvpForm({
               Email Address <span aria-hidden="true">*</span>
             </label>
             <span id={emailHintId} className="block font-label text-xs text-ink-muted mb-1">
-              Format: you@example.com (for your digital pass & stream link)
+              Format: you@example.com (for updates & stream link)
             </span>
             <input
               ref={emailInputRef}
@@ -319,7 +350,7 @@ export function RsvpForm({
                   onChange={(e) => setGuestCount(Number(e.target.value))}
                   className="celestial-input w-full rounded-lg border border-gold-light bg-white px-4 py-2.5 text-ink"
                 >
-                  {[1, 2, 3, 4, 5].map((n) => (
+                  {seatOptions.map((n) => (
                     <option key={n} value={n}>
                       {n} {n === 1 ? 'Guest' : 'Guests'}
                     </option>
@@ -352,6 +383,7 @@ export function RsvpForm({
       {/* Step 3: Gift Registry */}
       <GiftRegistryGrid
         items={registryItems}
+        currentGuestId={verifiedGuest.id}
         selectedId={selectedGiftId}
         onSelect={setSelectedGiftId}
         pledgeAmount={pledgeAmount}
@@ -397,13 +429,33 @@ export function RsvpForm({
         />
       </section>
 
+      {submitError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-error/30 bg-[#fff6f6] p-4 text-error"
+        >
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+          <p className="font-body text-base leading-snug">{submitError}</p>
+        </div>
+      )}
+
       <div className="pt-4 flex justify-center">
         <button
           type="submit"
-          className="min-h-12 inline-flex items-center gap-2.5 rounded-full bg-gold px-8 py-3.5 font-label text-sm font-semibold uppercase tracking-wider text-primary shadow-md hover:bg-gold-bright/90 transition-all cursor-pointer"
+          disabled={isSubmitting}
+          className="min-h-12 inline-flex items-center gap-2.5 rounded-full bg-gold px-8 py-3.5 font-label text-sm font-semibold uppercase tracking-wider text-primary shadow-md hover:bg-gold-bright/90 disabled:opacity-60 transition-all cursor-pointer"
         >
-          Confirm RSVP & Send Blessings
-          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              Saving RSVP...
+            </>
+          ) : (
+            <>
+              Confirm RSVP & Send Blessings
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </>
+          )}
         </button>
       </div>
     </form>
