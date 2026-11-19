@@ -72,7 +72,7 @@ service cloud.firestore {
       // Allow individual lookup by guestId (for confirmation redirect/edit) without exposing full guest list/emails
       allow get: if true;
       allow list: if isAdmin();
-      allow create, update: if isValidRsvp(guestId);
+      allow create, update: if isAdmin() || isValidRsvp(guestId);
       allow delete: if isAdmin();
     }
 

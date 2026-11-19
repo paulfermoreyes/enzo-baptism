@@ -47,4 +47,5 @@ export interface RsvpSubmission {
   rsvpCode: string;
   submittedAt: string;
   updatedAt?: string;
+  confirmedByAdmin?: boolean;
 }

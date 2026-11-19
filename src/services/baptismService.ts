@@ -17,6 +17,7 @@ import {
 } from '../data/baptismData';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import type {
+  AttendanceMode,
   BlessingNote,
   GuestRecord,
   RegistryItem,
@@ -73,6 +74,7 @@ function normalizeRsvpSubmission(raw: Partial<RsvpSubmission>, fallbackId?: stri
     rsvpCode: raw.rsvpCode ?? '',
     submittedAt: raw.submittedAt ?? '',
     updatedAt: raw.updatedAt,
+    confirmedByAdmin: Boolean(raw.confirmedByAdmin),
   };
 }
 
@@ -263,6 +265,7 @@ export async function submitRsvpToStore(
       {
         ...submission,
         pledgeAmount: submission.pledgeAmount ?? null,
+        confirmedByAdmin: false,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
@@ -352,6 +355,72 @@ export async function addGuestRecord(
 export async function deleteGuestRecord(guestId: string): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await deleteDoc(doc(db, GUESTS_COLLECTION, guestId));
+}
+
+export interface AdminAttendanceInput {
+  attendance: AttendanceMode;
+  email?: string;
+  dietaryNotes?: string;
+}
+
+export async function confirmGuestAttendance(
+  guest: GuestRecord,
+  input: AdminAttendanceInput,
+  existingRsvp?: RsvpSubmission | null
+): Promise<RsvpSubmission> {
+  const nowIso = new Date().toISOString();
+  const record: RsvpSubmission = {
+    guestId: guest.id,
+    firstName: existingRsvp?.firstName || guest.firstName,
+    lastName: existingRsvp?.lastName || guest.lastName,
+    guestName: existingRsvp?.guestName || guest.displayName,
+    email: (input.email ?? existingRsvp?.email ?? '').trim(),
+    attendance: input.attendance,
+    dietaryNotes:
+      input.attendance === 'in-person'
+        ? (input.dietaryNotes ?? existingRsvp?.dietaryNotes ?? '').trim()
+        : '',
+    reservedGiftId: existingRsvp?.reservedGiftId ?? null,
+    pledgeAmount: existingRsvp?.pledgeAmount ?? null,
+    blessingMessage: existingRsvp?.blessingMessage ?? '',
+    rsvpCode: existingRsvp?.rsvpCode || guest.rsvpCode,
+    submittedAt: existingRsvp?.submittedAt || nowIso.slice(0, 10),
+    updatedAt: nowIso,
+    confirmedByAdmin: true,
+  };
+
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, RSVPS_COLLECTION, guest.id), record, { merge: true });
+  }
+  return record;
+}
+
+export async function clearGuestAttendance(guestId: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  const firestore = db;
+
+  await runTransaction(firestore, async (tx) => {
+    const rsvpRef = doc(firestore, RSVPS_COLLECTION, guestId);
+    const rsvpSnap = await tx.get(rsvpRef);
+    if (!rsvpSnap.exists()) return;
+
+    const rsvpData = rsvpSnap.data() as Partial<RsvpSubmission>;
+    if (rsvpData.reservedGiftId) {
+      const giftRef = doc(firestore, REGISTRY_COLLECTION, rsvpData.reservedGiftId);
+      const giftSnap = await tx.get(giftRef);
+      if (giftSnap.exists()) {
+        const giftData = giftSnap.data() as RegistryItem;
+        if (giftData.allowMultiple) {
+          const nextIds = (giftData.reservedByGuestIds ?? []).filter((id) => id !== guestId);
+          tx.update(giftRef, { reservedByGuestIds: nextIds });
+        } else if (giftData.reservedByGuestId === guestId) {
+          tx.update(giftRef, { reservedByGuestId: null });
+        }
+      }
+    }
+
+    tx.delete(rsvpRef);
+  });
 }
 
 export interface RegistryItemInput {

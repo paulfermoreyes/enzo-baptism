@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import {
   AlertCircle,
+  CheckCircle2,
   Database,
+  Heart,
+  Loader2,
   LogIn,
   LogOut,
+  Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
@@ -18,13 +23,22 @@ import {
 } from '../../lib/firebase';
 import {
   addGuestRecord,
+  clearGuestAttendance,
+  confirmGuestAttendance,
   deleteBlessingNote,
   deleteGuestRecord,
   fetchAllGuests,
   fetchAllRsvps,
   seedInitialCollections,
 } from '../../services/baptismService';
-import type { BlessingNote, GuestRecord, RegistryItem, RsvpSubmission } from '../../types/baptism';
+import type {
+  AttendanceMode,
+  BlessingNote,
+  GuestRecord,
+  RegistryItem,
+  RsvpSubmission,
+} from '../../types/baptism';
+import { ModalDialog } from '../ui/ModalDialog';
 import { StationeryCard } from '../ui/StationeryCard';
 import { RegistryManager } from './RegistryManager';
 
@@ -46,6 +60,19 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
 
   const [newFirstName, setNewFirstName] = useState('');
   const [newLastName, setNewLastName] = useState('');
+
+  const [attendanceGuest, setAttendanceGuest] = useState<GuestRecord | null>(null);
+  const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('in-person');
+  const [attendanceEmail, setAttendanceEmail] = useState('');
+  const [attendanceDietary, setAttendanceDietary] = useState('');
+  const [attendanceEmailInvalid, setAttendanceEmailInvalid] = useState(false);
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+  const [isClearingAttendance, setIsClearingAttendance] = useState(false);
+
+  const attendanceEmailRef = useRef<HTMLInputElement>(null);
+  const attendanceEmailId = useId();
+  const attendanceEmailErrorId = useId();
+  const attendanceDietaryId = useId();
 
   useEffect(() => {
     if (!auth) {
@@ -147,6 +174,77 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
   const remoteCount = rsvps.filter((r) => r.attendance === 'remote').length;
 
   const giftTitleById = new Map(registryItems.map((i) => [i.id, i.title]));
+  const activeGuestRsvp = attendanceGuest ? rsvpByGuestId.get(attendanceGuest.id) ?? null : null;
+
+  const openAttendanceModal = (guest: GuestRecord) => {
+    const existing = rsvpByGuestId.get(guest.id);
+    setAttendanceGuest(guest);
+    setAttendanceMode(existing?.attendance ?? 'in-person');
+    setAttendanceEmail(existing?.email ?? '');
+    setAttendanceDietary(existing?.dietaryNotes ?? '');
+    setAttendanceEmailInvalid(false);
+  };
+
+  const closeAttendanceModal = () => {
+    if (isSavingAttendance || isClearingAttendance) return;
+    setAttendanceGuest(null);
+    setAttendanceEmailInvalid(false);
+  };
+
+  const handleSaveAttendance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!attendanceGuest) return;
+
+    const emailInput = attendanceEmailRef.current;
+    if (attendanceEmail.trim() && emailInput && !emailInput.validity.valid) {
+      setAttendanceEmailInvalid(true);
+      emailInput.focus();
+      return;
+    }
+
+    setStatusMessage(null);
+    setAuthError(null);
+    setIsSavingAttendance(true);
+    try {
+      const existing = rsvpByGuestId.get(attendanceGuest.id) ?? null;
+      await confirmGuestAttendance(
+        attendanceGuest,
+        {
+          attendance: attendanceMode,
+          email: attendanceEmail,
+          dietaryNotes: attendanceDietary,
+        },
+        existing
+      );
+      const modeLabel = attendanceMode === 'in-person' ? 'In-Person' : 'Remote';
+      setStatusMessage(
+        `${existing ? 'Updated' : 'Confirmed'} ${attendanceGuest.displayName} (${modeLabel}).`
+      );
+      setAttendanceGuest(null);
+      await loadAdminData();
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Failed to confirm guest attendance.');
+    } finally {
+      setIsSavingAttendance(false);
+    }
+  };
+
+  const handleClearAttendance = async () => {
+    if (!attendanceGuest) return;
+    setStatusMessage(null);
+    setAuthError(null);
+    setIsClearingAttendance(true);
+    try {
+      await clearGuestAttendance(attendanceGuest.id);
+      setStatusMessage(`Reset ${attendanceGuest.displayName} back to Pending.`);
+      setAttendanceGuest(null);
+      await loadAdminData();
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Failed to reset guest attendance.');
+    } finally {
+      setIsClearingAttendance(false);
+    }
+  };
 
   if (!isFirebaseConfigured) {
     return (
@@ -355,22 +453,54 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
                     <td className="py-3 pr-4 font-medium text-primary-container">{g.lastName}</td>
                     <td className="py-3 pr-4">
                       {rsvp ? (
-                        <span className="rounded-full bg-sky-soft px-2.5 py-0.5 font-label text-xs font-semibold text-primary-container">
-                          {rsvp.attendance === 'in-person' ? 'In-Person' : 'Remote'}
-                        </span>
+                        <div className="inline-flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-sky-soft px-2.5 py-0.5 font-label text-xs font-semibold text-primary-container">
+                            {rsvp.attendance === 'in-person' ? 'In-Person' : 'Remote'}
+                          </span>
+                          {rsvp.confirmedByAdmin && (
+                            <span className="rounded-full border border-gold/40 bg-parchment px-2 py-0.5 font-label text-[11px] font-medium text-secondary">
+                              Host
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="font-label text-xs text-ink-muted">Pending</span>
                       )}
                     </td>
                     <td className="py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteGuest(g.id)}
-                        className="inline-flex items-center gap-1 text-xs font-label text-error hover:underline cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                        Remove
-                      </button>
+                      <div className="inline-flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openAttendanceModal(g)}
+                          aria-label={
+                            rsvp
+                              ? `Update attendance for ${g.displayName}`
+                              : `Confirm attendance for ${g.displayName}`
+                          }
+                          className="inline-flex items-center gap-1 text-xs font-label font-semibold text-primary-container hover:text-primary hover:underline cursor-pointer"
+                        >
+                          {rsvp ? (
+                            <>
+                              <Pencil className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
+                              Edit
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
+                              Confirm
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteGuest(g.id)}
+                          aria-label={`Remove ${g.displayName}`}
+                          className="inline-flex items-center gap-1 text-xs font-label text-error hover:underline cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -422,9 +552,14 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
                 <tr key={r.guestId}>
                   <td className="py-3 pr-4 font-medium text-primary-container">{r.firstName}</td>
                   <td className="py-3 pr-4 font-medium text-primary-container">{r.lastName}</td>
-                  <td className="py-3 pr-4 text-ink-muted text-sm">{r.email}</td>
+                  <td className="py-3 pr-4 text-ink-muted text-sm">{r.email || '—'}</td>
                   <td className="py-3 pr-4 text-sm">
-                    {r.attendance === 'in-person' ? 'In-Person' : 'Remote'}
+                    <span>{r.attendance === 'in-person' ? 'In-Person' : 'Remote'}</span>
+                    {r.confirmedByAdmin && (
+                      <span className="ml-1.5 rounded-full border border-gold/40 bg-parchment px-2 py-0.5 font-label text-[11px] font-medium text-secondary">
+                        Host
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 pr-4 text-sm text-ink-muted">{r.dietaryNotes || '—'}</td>
                   <td className="py-3 text-sm text-ink-muted">
@@ -477,6 +612,189 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
           )}
         </div>
       </StationeryCard>
+
+      {/* Confirm / Edit Guest Attendance Modal */}
+      <ModalDialog
+        open={attendanceGuest !== null}
+        onClose={closeAttendanceModal}
+        title={activeGuestRsvp ? 'Update Guest Attendance' : 'Confirm Guest Attendance'}
+      >
+        {attendanceGuest && (
+          <form onSubmit={handleSaveAttendance} noValidate className="space-y-5">
+            <div className="rounded-xl border border-gold/30 bg-surface px-4 py-3">
+              <p className="font-label text-xs uppercase tracking-wider text-secondary">Guest</p>
+              <p className="font-display text-xl text-primary">{attendanceGuest.displayName}</p>
+            </div>
+
+            <fieldset>
+              <legend className="font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-2.5">
+                Attendance Mode
+              </legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label
+                  className={`flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-all ${
+                    attendanceMode === 'in-person'
+                      ? 'border-gold bg-sky-soft/50 shadow-sm'
+                      : 'border-gold/30 bg-surface hover:border-gold/60'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="admin-attendance"
+                    value="in-person"
+                    checked={attendanceMode === 'in-person'}
+                    onChange={() => setAttendanceMode('in-person')}
+                    className="mt-0.5 h-4 w-4 accent-secondary cursor-pointer"
+                  />
+                  <div>
+                    <span className="flex items-center gap-1.5 font-display text-base font-medium text-primary-container">
+                      <CheckCircle2 className="w-4 h-4 text-gold" aria-hidden="true" />
+                      In-Person
+                    </span>
+                    <span className="block font-label text-xs text-ink-muted">
+                      Attending ceremony & reception
+                    </span>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-all ${
+                    attendanceMode === 'remote'
+                      ? 'border-gold bg-sky-soft/50 shadow-sm'
+                      : 'border-gold/30 bg-surface hover:border-gold/60'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="admin-attendance"
+                    value="remote"
+                    checked={attendanceMode === 'remote'}
+                    onChange={() => setAttendanceMode('remote')}
+                    className="mt-0.5 h-4 w-4 accent-secondary cursor-pointer"
+                  />
+                  <div>
+                    <span className="flex items-center gap-1.5 font-display text-base font-medium text-primary-container">
+                      <Heart className="w-4 h-4 text-gold" aria-hidden="true" />
+                      Remote
+                    </span>
+                    <span className="block font-label text-xs text-ink-muted">
+                      Celebrating in spirit / livestream
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+
+            <div>
+              <label
+                htmlFor={attendanceEmailId}
+                className="block font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-1"
+              >
+                Email Address <span className="font-normal text-ink-muted">(Optional)</span>
+              </label>
+              <input
+                ref={attendanceEmailRef}
+                id={attendanceEmailId}
+                name="email"
+                type="email"
+                autoComplete="email"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={160}
+                value={attendanceEmail}
+                aria-invalid={attendanceEmailInvalid ? 'true' : 'false'}
+                aria-describedby={attendanceEmailInvalid ? attendanceEmailErrorId : undefined}
+                onChange={(e) => {
+                  setAttendanceEmail(e.target.value);
+                  if (attendanceEmailInvalid && (!e.target.value.trim() || e.target.validity.valid)) {
+                    setAttendanceEmailInvalid(false);
+                  }
+                }}
+                placeholder="you@example.com"
+                className={`celestial-input w-full rounded-lg border border-gold-light bg-white px-3.5 py-2 text-ink ${
+                  attendanceEmailInvalid ? 'user-invalid-fallback' : ''
+                }`}
+              />
+              <div
+                id={attendanceEmailErrorId}
+                className="field-error items-center gap-1.5 mt-1 font-label text-xs font-semibold text-error"
+              >
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Enter an email address in the format you@example.com.</span>
+              </div>
+            </div>
+
+            {attendanceMode === 'in-person' && (
+              <div>
+                <label
+                  htmlFor={attendanceDietaryId}
+                  className="block font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-1"
+                >
+                  Dietary Notes <span className="font-normal text-ink-muted">(Optional)</span>
+                </label>
+                <input
+                  id={attendanceDietaryId}
+                  name="dietaryNotes"
+                  type="text"
+                  maxLength={300}
+                  value={attendanceDietary}
+                  onChange={(e) => setAttendanceDietary(e.target.value)}
+                  placeholder="e.g. Vegetarian, 1 high chair"
+                  className="celestial-input w-full rounded-lg border border-gold-light bg-white px-3.5 py-2 text-ink"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gold/20">
+              {activeGuestRsvp ? (
+                <button
+                  type="button"
+                  onClick={() => void handleClearAttendance()}
+                  disabled={isSavingAttendance || isClearingAttendance}
+                  className="min-h-10 inline-flex items-center gap-1.5 rounded-full border border-error/40 bg-white px-4 py-2 font-label text-xs font-semibold text-error hover:bg-[#fff6f6] disabled:opacity-50 cursor-pointer"
+                >
+                  {isClearingAttendance ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                  Reset to Pending
+                </button>
+              ) : (
+                <span />
+              )}
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={closeAttendanceModal}
+                  disabled={isSavingAttendance || isClearingAttendance}
+                  className="min-h-10 rounded-full border border-gold/50 bg-white px-5 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary-container hover:bg-sky-soft/60 disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAttendance || isClearingAttendance}
+                  className="min-h-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-6 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary hover:bg-gold-bright/90 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingAttendance ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                      Saving...
+                    </>
+                  ) : activeGuestRsvp ? (
+                    'Save Changes'
+                  ) : (
+                    'Confirm Attendance'
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+      </ModalDialog>
     </div>
   );
 }
