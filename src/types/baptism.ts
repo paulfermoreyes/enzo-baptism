@@ -4,9 +4,10 @@ export type AttendanceMode = 'in-person' | 'remote';
 
 export interface GuestRecord {
   id: string;
+  firstName: string;
+  lastName: string;
   displayName: string;
   searchName: string;
-  reservedSeats: number;
   rsvpCode: string;
 }
 
@@ -34,10 +35,11 @@ export interface BlessingNote {
 
 export interface RsvpSubmission {
   guestId: string;
+  firstName: string;
+  lastName: string;
   guestName: string;
   email: string;
   attendance: AttendanceMode;
-  guestCount: number;
   dietaryNotes: string;
   reservedGiftId: string | null;
   pledgeAmount?: string | null;

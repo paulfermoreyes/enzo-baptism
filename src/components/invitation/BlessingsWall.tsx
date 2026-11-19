@@ -35,33 +35,39 @@ export function BlessingsWall({ blessings, onLeaveBlessing }: BlessingsWallProps
           </button>
         </div>
 
-        <ul className="grid grid-cols-1 md:grid-cols-3 gap-5 list-none p-0 m-0">
-          {blessings.map((note) => (
-            <li
-              key={note.id}
-              className="flex flex-col justify-between rounded-xl border border-gold/30 bg-surface p-5"
-            >
-              <blockquote className="font-body italic text-base text-ink leading-relaxed">
-                “{note.message}”
-              </blockquote>
+        {blessings.length === 0 ? (
+          <p className="rounded-xl border border-gold/25 bg-surface p-6 text-center font-body text-base text-ink-muted">
+            No blessings have been inscribed yet. Be the first to leave a prayer or note for Baby Enzo.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 md:grid-cols-3 gap-5 list-none p-0 m-0">
+            {blessings.map((note) => (
+              <li
+                key={note.id}
+                className="flex flex-col justify-between rounded-xl border border-gold/30 bg-surface p-5"
+              >
+                <blockquote className="font-body italic text-base text-ink leading-relaxed">
+                  “{note.message}”
+                </blockquote>
 
-              <div className="mt-5 pt-4 border-t border-gold/20 flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container font-label text-xs font-semibold text-white"
-                >
-                  {note.initials}
-                </span>
-                <div>
-                  <p className="font-label text-sm font-semibold text-primary-container leading-tight">
-                    {note.author}
-                  </p>
-                  <p className="font-label text-xs text-ink-muted mt-0.5">{note.role}</p>
+                <div className="mt-5 pt-4 border-t border-gold/20 flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container font-label text-xs font-semibold text-white"
+                  >
+                    {note.initials}
+                  </span>
+                  <div>
+                    <p className="font-label text-sm font-semibold text-primary-container leading-tight">
+                      {note.author}
+                    </p>
+                    <p className="font-label text-xs text-ink-muted mt-0.5">{note.role}</p>
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        )}
       </StationeryCard>
     </section>
   );

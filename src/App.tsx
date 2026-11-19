@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Sparkles } from 'lucide-react';
-import { INITIAL_BLESSINGS, INITIAL_REGISTRY_ITEMS } from './data/baptismData';
+import { INITIAL_REGISTRY_ITEMS } from './data/baptismData';
 import {
   subscribeBlessings,
   subscribeRegistry,
@@ -41,6 +41,8 @@ const PASTEL_SWATCHES = [
   { name: 'Gentle Slate Navy', hex: '#2B445B', note: 'Evening & Suiting' },
 ];
 
+const SHOW_HEIRLOOM_NOTES = false;
+
 function getInitialView(): PageView {
   if (typeof window !== 'undefined' && window.location.hash === '#admin') {
     return 'admin';
@@ -52,7 +54,7 @@ export function App() {
   const [currentView, setCurrentView] = useState<PageView>(getInitialView);
   const [verifiedGuest, setVerifiedGuest] = useState<GuestRecord | null>(null);
   const [registryItems, setRegistryItems] = useState<RegistryItem[]>(INITIAL_REGISTRY_ITEMS);
-  const [blessings, setBlessings] = useState<BlessingNote[]>(INITIAL_BLESSINGS);
+  const [blessings, setBlessings] = useState<BlessingNote[]>([]);
   const [submission, setSubmission] = useState<RsvpSubmission | null>(null);
   const [hasConfirmedPass, setHasConfirmedPass] = useState(false);
 
@@ -171,10 +173,12 @@ export function App() {
             />
             <ScheduleSection />
             <FaqSection />
-            <BlessingsWall
-              blessings={blessings}
-              onLeaveBlessing={() => navigateTo('rsvp')}
-            />
+            {SHOW_HEIRLOOM_NOTES && (
+              <BlessingsWall
+                blessings={blessings}
+                onLeaveBlessing={() => navigateTo('rsvp')}
+              />
+            )}
           </>
         )}
 

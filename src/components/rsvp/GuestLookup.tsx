@@ -16,21 +16,24 @@ export function GuestLookup({
   onFoundExistingRsvp,
   onClearGuest,
 }: GuestLookupProps) {
-  const [query, setQuery] = useState(verifiedGuest?.displayName ?? '');
+  const [firstName, setFirstName] = useState(verifiedGuest?.firstName ?? '');
+  const [lastName, setLastName] = useState(verifiedGuest?.lastName ?? '');
   const [isSearching, setIsSearching] = useState(false);
   const [notFoundError, setNotFoundError] = useState<string | null>(null);
-  const inputId = useId();
+  const firstNameId = useId();
+  const lastNameId = useId();
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed) return;
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    if (!trimmedFirst || !trimmedLast) return;
 
     setIsSearching(true);
     setNotFoundError(null);
 
     try {
-      const { guest, existingRsvp } = await lookupGuestAndRsvp(trimmed);
+      const { guest, existingRsvp } = await lookupGuestAndRsvp(trimmedFirst, trimmedLast);
       if (!guest) {
         onClearGuest();
         setNotFoundError(
@@ -62,37 +65,60 @@ export function GuestLookup({
             Guest Verification
           </h2>
           <p className="font-body text-base text-ink-muted">
-            Please enter your name as written on your physical or digital invitation. If you have already responded, you will be taken straight to your confirmation.
+            Please enter your first and last name as written on your invitation. If you have already responded, you will be taken straight to your confirmation.
           </p>
         </div>
       </div>
 
       <div className="rounded-xl border border-gold/35 bg-surface p-5 sm:p-6">
-        <form onSubmit={handleLookup} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
-          <div className="flex-1">
+        <form onSubmit={handleLookup} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-stretch sm:items-end">
+          <div>
             <label
-              htmlFor={inputId}
+              htmlFor={firstNameId}
               className="block font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-1.5"
             >
-              Invitation Name
+              First Name
             </label>
             <input
-              id={inputId}
-              name="guestLookup"
+              id={firstNameId}
+              name="firstName"
               type="text"
-              value={query}
+              autoComplete="given-name"
+              value={firstName}
               onChange={(e) => {
-                setQuery(e.target.value);
+                setFirstName(e.target.value);
                 if (notFoundError) setNotFoundError(null);
               }}
-              placeholder="e.g. Elena & Marco Santos"
+              placeholder="e.g. Elena"
+              className="celestial-input w-full rounded-lg border border-gold-light bg-white px-4 py-2.5 text-ink"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor={lastNameId}
+              className="block font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-1.5"
+            >
+              Last Name
+            </label>
+            <input
+              id={lastNameId}
+              name="lastName"
+              type="text"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => {
+                setLastName(e.target.value);
+                if (notFoundError) setNotFoundError(null);
+              }}
+              placeholder="e.g. Santos"
               className="celestial-input w-full rounded-lg border border-gold-light bg-white px-4 py-2.5 text-ink"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isSearching || !query.trim()}
+            disabled={isSearching || !firstName.trim() || !lastName.trim()}
             className="min-h-12 inline-flex items-center justify-center gap-2 rounded-full bg-primary-container px-6 py-2.5 font-label text-sm font-semibold text-white hover:bg-primary disabled:opacity-60 transition-colors cursor-pointer"
           >
             {isSearching ? (
@@ -124,9 +150,6 @@ export function GuestLookup({
               </p>
               <p className="font-display text-xl font-medium text-primary-container">
                 {verifiedGuest.displayName}
-              </p>
-              <p className="font-label text-xs text-ink-muted mt-0.5">
-                {verifiedGuest.reservedSeats} Reserved {verifiedGuest.reservedSeats === 1 ? 'Seat' : 'Seats'}
               </p>
             </div>
           </div>

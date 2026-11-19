@@ -23,9 +23,10 @@ if (!projectId) {
 const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
 
 const GUESTS = [
-  { id: 'elena-marco', displayName: 'Elena & Marco Santos', searchName: 'elena & marco santos', reservedSeats: 2, rsvpCode: '#ENZO-2027-01' },
-  { id: 'angel-carlo', displayName: 'Angel & Carlo Reyes', searchName: 'angel & carlo reyes', reservedSeats: 2, rsvpCode: '#ENZO-2027-02' },
-  { id: 'marco-bea', displayName: 'Marco & Bea Mendoza', searchName: 'marco & bea mendoza', reservedSeats: 3, rsvpCode: '#ENZO-2027-03' },
+  { id: 'elena-santos', firstName: 'Elena', lastName: 'Santos', displayName: 'Elena Santos', searchName: 'elena santos', rsvpCode: '#ENZO-2027-01' },
+  { id: 'marco-santos', firstName: 'Marco', lastName: 'Santos', displayName: 'Marco Santos', searchName: 'marco santos', rsvpCode: '#ENZO-2027-02' },
+  { id: 'angel-reyes', firstName: 'Angel', lastName: 'Reyes', displayName: 'Angel Reyes', searchName: 'angel reyes', rsvpCode: '#ENZO-2027-03' },
+  { id: 'carlo-reyes', firstName: 'Carlo', lastName: 'Reyes', displayName: 'Carlo Reyes', searchName: 'carlo reyes', rsvpCode: '#ENZO-2027-04' },
 ];
 
 const REGISTRY = [

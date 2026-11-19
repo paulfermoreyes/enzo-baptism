@@ -162,9 +162,7 @@ export function ConfirmationPass({
 
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="rounded-full bg-sky-soft px-3.5 py-1 font-label text-xs font-semibold text-primary-container">
-              {previewMode === 'in-person'
-                ? `${submission.guestCount} Confirmed ${submission.guestCount === 1 ? 'Guest' : 'Guests'}`
-                : 'Remote Prayer Guest'}
+              {previewMode === 'in-person' ? 'Attending in Person' : 'Remote Prayer Guest'}
             </span>
             {submission.dietaryNotes && previewMode === 'in-person' && (
               <span className="rounded-full bg-parchment border border-gold/40 px-3.5 py-1 font-label text-xs font-semibold text-secondary">

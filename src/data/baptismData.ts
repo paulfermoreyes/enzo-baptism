@@ -1,7 +1,7 @@
-import type { BlessingNote, GuestRecord, RegistryItem } from '../types/baptism';
+import type { GuestRecord, RegistryItem } from '../types/baptism';
 
 export const EVENT_INFO = {
-  babyFullName: 'Lorenzo Paul',
+  babyFullName: 'Lorenzo Paul Reyes',
   babyNickname: 'Enzo',
   dateDisplay: 'Tuesday, January 12, 2027',
   rsvpDeadline: 'December 20, 2026',
@@ -44,25 +44,36 @@ export const EVENT_INFO = {
 
 export const INITIAL_GUESTS: GuestRecord[] = [
   {
-    id: 'elena-marco',
-    displayName: 'Elena & Marco Santos',
-    searchName: 'elena & marco santos',
-    reservedSeats: 2,
+    id: 'elena-santos',
+    firstName: 'Elena',
+    lastName: 'Santos',
+    displayName: 'Elena Santos',
+    searchName: 'elena santos',
     rsvpCode: '#ENZO-2027-01',
   },
   {
-    id: 'angel-carlo',
-    displayName: 'Angel & Carlo Reyes',
-    searchName: 'angel & carlo reyes',
-    reservedSeats: 2,
+    id: 'marco-santos',
+    firstName: 'Marco',
+    lastName: 'Santos',
+    displayName: 'Marco Santos',
+    searchName: 'marco santos',
     rsvpCode: '#ENZO-2027-02',
   },
   {
-    id: 'marco-bea',
-    displayName: 'Marco & Bea Mendoza',
-    searchName: 'marco & bea mendoza',
-    reservedSeats: 3,
+    id: 'angel-reyes',
+    firstName: 'Angel',
+    lastName: 'Reyes',
+    displayName: 'Angel Reyes',
+    searchName: 'angel reyes',
     rsvpCode: '#ENZO-2027-03',
+  },
+  {
+    id: 'carlo-reyes',
+    firstName: 'Carlo',
+    lastName: 'Reyes',
+    displayName: 'Carlo Reyes',
+    searchName: 'carlo reyes',
+    rsvpCode: '#ENZO-2027-04',
   },
 ];
 
@@ -135,39 +146,6 @@ export const INITIAL_REGISTRY_ITEMS: RegistryItem[] = [
     allowMultiple: true,
     reservedByGuestId: null,
     reservedByGuestIds: [],
-  },
-];
-
-export const INITIAL_BLESSINGS: BlessingNote[] = [
-  {
-    id: 'b-1',
-    author: 'Ninang Angel & Ninong Carlo',
-    initials: 'NA',
-    role: 'Godparents • Manila',
-    message:
-      'Dearest little Enzo, may God’s radiant light guide every tender step you take. We promise to stand by your side with boundless love, wisdom, and laughter!',
-    folioPage: 'Page 11',
-    createdAt: 1700000001000,
-  },
-  {
-    id: 'b-2',
-    author: 'Tito Marco & Tita Bea',
-    initials: 'TM',
-    role: 'Cousins • Quezon City',
-    message:
-      'Welcome to Christ’s warm embrace, baby Lorenzo Paul! You bring our entire family so much peace and sunshine. We cannot wait to celebrate your special day.',
-    folioPage: 'Page 12',
-    createdAt: 1700000002000,
-  },
-  {
-    id: 'b-3',
-    author: 'Elena & Marco Santos',
-    initials: 'EM',
-    role: 'Principal Sponsors • Quezon City',
-    message:
-      'May God bless you with abundant wisdom, pure wonder, and eternal peace every step of your sacred journey, sweet Enzo. We love you with all our hearts.',
-    folioPage: 'Page 14',
-    createdAt: 1700000003000,
   },
 ];
 

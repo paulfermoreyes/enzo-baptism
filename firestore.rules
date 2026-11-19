@@ -16,10 +16,11 @@ service cloud.firestore {
       let data = request.resource.data;
       return guestExists(guestId)
         && data.guestId == guestId
+        && data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 60
+        && data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 60
         && data.guestName is string && data.guestName.size() > 0 && data.guestName.size() <= 120
         && data.email is string && data.email.size() > 3 && data.email.size() <= 160
         && data.attendance in ['in-person', 'remote']
-        && data.guestCount is int && data.guestCount >= 1 && data.guestCount <= 10
         && (!('dietaryNotes' in data) || (data.dietaryNotes is string && data.dietaryNotes.size() <= 300))
         && (!('blessingMessage' in data) || (data.blessingMessage is string && data.blessingMessage.size() <= 1000))
         && (!('pledgeAmount' in data) || data.pledgeAmount == null || (data.pledgeAmount is string && data.pledgeAmount.size() <= 60))

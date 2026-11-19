@@ -12,7 +12,6 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import {
-  INITIAL_BLESSINGS,
   INITIAL_GUESTS,
   INITIAL_REGISTRY_ITEMS,
 } from '../data/baptismData';
@@ -29,6 +28,54 @@ const RSVPS_COLLECTION = 'rsvps';
 const REGISTRY_COLLECTION = 'registry';
 const BLESSINGS_COLLECTION = 'blessings';
 
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) {
+    return { firstName: parts[0] ?? '', lastName: '' };
+  }
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1],
+  };
+}
+
+function normalizeGuestRecord(raw: Partial<GuestRecord>, id: string): GuestRecord {
+  const fallback = splitFullName(raw.displayName ?? '');
+  const firstName = (raw.firstName ?? fallback.firstName).trim();
+  const lastName = (raw.lastName ?? fallback.lastName).trim();
+  const displayName = (raw.displayName ?? `${firstName} ${lastName}`).trim();
+  return {
+    id,
+    firstName,
+    lastName,
+    displayName,
+    searchName: (raw.searchName ?? displayName).trim().toLowerCase(),
+    rsvpCode: raw.rsvpCode ?? '',
+  };
+}
+
+function normalizeRsvpSubmission(raw: Partial<RsvpSubmission>, fallbackId?: string): RsvpSubmission {
+  const fallback = splitFullName(raw.guestName ?? '');
+  const firstName = (raw.firstName ?? fallback.firstName).trim();
+  const lastName = (raw.lastName ?? fallback.lastName).trim();
+  const guestName = (raw.guestName ?? `${firstName} ${lastName}`).trim();
+  return {
+    guestId: raw.guestId ?? fallbackId ?? '',
+    firstName,
+    lastName,
+    guestName,
+    email: raw.email ?? '',
+    attendance: raw.attendance ?? 'in-person',
+    dietaryNotes: raw.dietaryNotes ?? '',
+    reservedGiftId: raw.reservedGiftId ?? null,
+    pledgeAmount: raw.pledgeAmount ?? null,
+    blessingMessage: raw.blessingMessage ?? '',
+    rsvpCode: raw.rsvpCode ?? '',
+    submittedAt: raw.submittedAt ?? '',
+    updatedAt: raw.updatedAt,
+  };
+}
+
 function buildInitials(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length >= 2) {
@@ -37,27 +84,45 @@ function buildInitials(name: string): string {
   return name.slice(0, 2).toUpperCase() || 'GZ';
 }
 
+function normalizeRegistryItem(raw: Partial<RegistryItem>, id: string): RegistryItem {
+  const isFund = Boolean(raw.isFund);
+  const allowMultiple = isFund ? true : Boolean(raw.allowMultiple);
+  return {
+    id,
+    category: (raw.category ?? 'Gift').trim(),
+    title: (raw.title ?? '').trim(),
+    priceLabel: (raw.priceLabel ?? '').trim(),
+    description: (raw.description ?? '').trim(),
+    isFund,
+    allowMultiple,
+    reservedByGuestId: allowMultiple ? null : (raw.reservedByGuestId ?? null),
+    reservedByGuestIds: allowMultiple ? (raw.reservedByGuestIds ?? []) : [],
+  };
+}
+
+function sortRegistryItems(items: RegistryItem[]): RegistryItem[] {
+  return [...items].sort((a, b) => {
+    if (a.isFund !== b.isFund) return a.isFund ? 1 : -1;
+    return a.category.localeCompare(b.category) || a.title.localeCompare(b.title);
+  });
+}
+
 export function subscribeRegistry(
   onUpdate: (items: RegistryItem[]) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
   if (!isFirebaseConfigured || !db) {
-    onUpdate(INITIAL_REGISTRY_ITEMS);
-    return () => {};
+    onUpdate(sortRegistryItems(INITIAL_REGISTRY_ITEMS));
+    return () => { };
   }
 
   return onSnapshot(
     collection(db, REGISTRY_COLLECTION),
     (snapshot) => {
-      if (snapshot.empty) {
-        onUpdate(INITIAL_REGISTRY_ITEMS);
-        return;
-      }
-      const items = snapshot.docs.map((d) => ({
-        ...(d.data() as RegistryItem),
-        id: d.id,
-      }));
-      onUpdate(items);
+      const items = snapshot.docs.map((d) =>
+        normalizeRegistryItem(d.data() as Partial<RegistryItem>, d.id)
+      );
+      onUpdate(sortRegistryItems(items));
     },
     (err) => {
       onError?.(err);
@@ -70,18 +135,14 @@ export function subscribeBlessings(
   onError?: (err: Error) => void
 ): Unsubscribe {
   if (!isFirebaseConfigured || !db) {
-    onUpdate(INITIAL_BLESSINGS);
-    return () => {};
+    onUpdate([]);
+    return () => { };
   }
 
   const q = query(collection(db, BLESSINGS_COLLECTION), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snapshot) => {
-      if (snapshot.empty) {
-        onUpdate(INITIAL_BLESSINGS);
-        return;
-      }
       const notes = snapshot.docs.map((d) => ({
         ...(d.data() as BlessingNote),
         id: d.id,
@@ -99,43 +160,45 @@ export interface GuestLookupResult {
   existingRsvp: RsvpSubmission | null;
 }
 
-export async function lookupGuestAndRsvp(rawName: string): Promise<GuestLookupResult> {
-  const normalized = rawName.trim().toLowerCase();
-  if (!normalized) {
+export async function lookupGuestAndRsvp(
+  rawFirstName: string,
+  rawLastName: string
+): Promise<GuestLookupResult> {
+  const first = rawFirstName.trim().toLowerCase();
+  const last = rawLastName.trim().toLowerCase();
+  if (!first || !last) {
     return { guest: null, existingRsvp: null };
   }
+  const combined = `${first} ${last}`;
+
+  const matchesGuest = (g: GuestRecord): boolean =>
+    (g.firstName.trim().toLowerCase() === first &&
+      g.lastName.trim().toLowerCase() === last) ||
+    g.searchName === combined ||
+    g.displayName.trim().toLowerCase() === combined;
 
   if (!isFirebaseConfigured || !db) {
-    const localMatch =
-      INITIAL_GUESTS.find(
-        (g) =>
-          g.searchName === normalized ||
-          g.displayName.toLowerCase().includes(normalized)
-      ) ?? null;
+    const localMatch = INITIAL_GUESTS.find(matchesGuest) ?? null;
     return { guest: localMatch, existingRsvp: null };
   }
 
   const guestsSnap = await getDocs(collection(db, GUESTS_COLLECTION));
-  const allGuests = guestsSnap.docs.map((d) => ({
-    ...(d.data() as GuestRecord),
-    id: d.id,
-  }));
-
-  const exactMatch = allGuests.find(
-    (g) => g.searchName === normalized || g.displayName.toLowerCase() === normalized
+  const allGuests = guestsSnap.docs.map((d) =>
+    normalizeGuestRecord(d.data() as Partial<GuestRecord>, d.id)
   );
-  const partialMatch =
-    exactMatch ??
-    allGuests.find((g) => g.displayName.toLowerCase().includes(normalized));
 
-  if (!partialMatch) {
+  const match = allGuests.find(matchesGuest) ?? null;
+
+  if (!match) {
     return { guest: null, existingRsvp: null };
   }
 
-  const rsvpSnap = await getDoc(doc(db, RSVPS_COLLECTION, partialMatch.id));
-  const existingRsvp = rsvpSnap.exists() ? (rsvpSnap.data() as RsvpSubmission) : null;
+  const rsvpSnap = await getDoc(doc(db, RSVPS_COLLECTION, match.id));
+  const existingRsvp = rsvpSnap.exists()
+    ? normalizeRsvpSubmission(rsvpSnap.data() as Partial<RsvpSubmission>, match.id)
+    : null;
 
-  return { guest: partialMatch, existingRsvp };
+  return { guest: match, existingRsvp };
 }
 
 export async function submitRsvpToStore(
@@ -235,25 +298,37 @@ export async function submitRsvpToStore(
 // --- Admin Operations ---
 
 export async function fetchAllGuests(): Promise<GuestRecord[]> {
-  if (!isFirebaseConfigured || !db) return INITIAL_GUESTS;
+  if (!isFirebaseConfigured || !db) {
+    return [...INITIAL_GUESTS].sort(
+      (a, b) =>
+        a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)
+    );
+  }
   const snap = await getDocs(collection(db, GUESTS_COLLECTION));
   return snap.docs
-    .map((d) => ({ ...(d.data() as GuestRecord), id: d.id }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    .map((d) => normalizeGuestRecord(d.data() as Partial<GuestRecord>, d.id))
+    .sort(
+      (a, b) =>
+        a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)
+    );
 }
 
 export async function fetchAllRsvps(): Promise<RsvpSubmission[]> {
   if (!isFirebaseConfigured || !db) return [];
   const snap = await getDocs(collection(db, RSVPS_COLLECTION));
-  return snap.docs.map((d) => d.data() as RsvpSubmission);
+  return snap.docs.map((d) =>
+    normalizeRsvpSubmission(d.data() as Partial<RsvpSubmission>, d.id)
+  );
 }
 
 export async function addGuestRecord(
-  displayName: string,
-  reservedSeats: number
+  firstName: string,
+  lastName: string
 ): Promise<GuestRecord> {
-  const trimmed = displayName.trim();
-  const slug = trimmed
+  const trimmedFirst = firstName.trim();
+  const trimmedLast = lastName.trim();
+  const displayName = `${trimmedFirst} ${trimmedLast}`.trim();
+  const slug = displayName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
@@ -261,9 +336,10 @@ export async function addGuestRecord(
   const codeSuffix = Math.floor(100 + Math.random() * 899);
   const record: GuestRecord = {
     id,
-    displayName: trimmed,
-    searchName: trimmed.toLowerCase(),
-    reservedSeats,
+    firstName: trimmedFirst,
+    lastName: trimmedLast,
+    displayName,
+    searchName: displayName.toLowerCase(),
     rsvpCode: `#ENZO-2027-${codeSuffix}`,
   };
 
@@ -278,6 +354,106 @@ export async function deleteGuestRecord(guestId: string): Promise<void> {
   await deleteDoc(doc(db, GUESTS_COLLECTION, guestId));
 }
 
+export interface RegistryItemInput {
+  category: string;
+  title: string;
+  priceLabel: string;
+  description: string;
+  isFund: boolean;
+  allowMultiple: boolean;
+}
+
+export async function addRegistryItem(input: RegistryItemInput): Promise<RegistryItem> {
+  const title = input.title.trim();
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+  const id = `${slug || 'gift'}-${Date.now().toString(36).slice(-4)}`;
+  const isFund = Boolean(input.isFund);
+  const allowMultiple = isFund ? true : Boolean(input.allowMultiple);
+
+  const record: RegistryItem = {
+    id,
+    category: input.category.trim(),
+    title,
+    priceLabel: input.priceLabel.trim(),
+    description: input.description.trim(),
+    isFund,
+    allowMultiple,
+    reservedByGuestId: null,
+    reservedByGuestIds: [],
+  };
+
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, REGISTRY_COLLECTION, id), record);
+  }
+  return record;
+}
+
+export async function updateRegistryItem(
+  itemId: string,
+  input: RegistryItemInput
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+
+  const ref = doc(db, REGISTRY_COLLECTION, itemId);
+  const snap = await getDoc(ref);
+  const existing = snap.exists() ? (snap.data() as Partial<RegistryItem>) : {};
+
+  const isFund = Boolean(input.isFund);
+  const allowMultiple = isFund ? true : Boolean(input.allowMultiple);
+
+  let reservedByGuestId: string | null = existing.reservedByGuestId ?? null;
+  let reservedByGuestIds: string[] = existing.reservedByGuestIds ?? [];
+
+  if (allowMultiple) {
+    if (reservedByGuestId && !reservedByGuestIds.includes(reservedByGuestId)) {
+      reservedByGuestIds = [reservedByGuestId, ...reservedByGuestIds];
+    }
+    reservedByGuestId = null;
+  } else {
+    if (!reservedByGuestId && reservedByGuestIds.length > 0) {
+      reservedByGuestId = reservedByGuestIds[0];
+    }
+    reservedByGuestIds = [];
+  }
+
+  await setDoc(
+    ref,
+    {
+      id: itemId,
+      category: input.category.trim(),
+      title: input.title.trim(),
+      priceLabel: input.priceLabel.trim(),
+      description: input.description.trim(),
+      isFund,
+      allowMultiple,
+      reservedByGuestId,
+      reservedByGuestIds,
+    } satisfies RegistryItem,
+    { merge: true }
+  );
+}
+
+export async function clearRegistryReservations(itemId: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await setDoc(
+    doc(db, REGISTRY_COLLECTION, itemId),
+    {
+      reservedByGuestId: null,
+      reservedByGuestIds: [],
+    },
+    { merge: true }
+  );
+}
+
+export async function deleteRegistryItem(itemId: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await deleteDoc(doc(db, REGISTRY_COLLECTION, itemId));
+}
+
 export async function deleteBlessingNote(blessingId: string): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await deleteDoc(doc(db, BLESSINGS_COLLECTION, blessingId));
@@ -286,7 +462,6 @@ export async function deleteBlessingNote(blessingId: string): Promise<void> {
 export async function seedInitialCollections(): Promise<{
   guestsSeeded: number;
   registrySeeded: number;
-  blessingsSeeded: number;
 }> {
   if (!isFirebaseConfigured || !db) {
     throw new Error('Firebase is not configured.');
@@ -294,7 +469,6 @@ export async function seedInitialCollections(): Promise<{
 
   let guestsSeeded = 0;
   let registrySeeded = 0;
-  let blessingsSeeded = 0;
 
   for (const guest of INITIAL_GUESTS) {
     await setDoc(doc(db, GUESTS_COLLECTION, guest.id), guest, { merge: true });
@@ -310,14 +484,5 @@ export async function seedInitialCollections(): Promise<{
     }
   }
 
-  for (const note of INITIAL_BLESSINGS) {
-    const ref = doc(db, BLESSINGS_COLLECTION, note.id);
-    const existing = await getDoc(ref);
-    if (!existing.exists()) {
-      await setDoc(ref, note);
-      blessingsSeeded += 1;
-    }
-  }
-
-  return { guestsSeeded, registrySeeded, blessingsSeeded };
+  return { guestsSeeded, registrySeeded };
 }

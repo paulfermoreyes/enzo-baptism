@@ -26,6 +26,7 @@ import {
 } from '../../services/baptismService';
 import type { BlessingNote, GuestRecord, RegistryItem, RsvpSubmission } from '../../types/baptism';
 import { StationeryCard } from '../ui/StationeryCard';
+import { RegistryManager } from './RegistryManager';
 
 interface AdminPageProps {
   registryItems: RegistryItem[];
@@ -43,8 +44,8 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
   const [dataLoading, setDataLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const [newGuestName, setNewGuestName] = useState('');
-  const [newGuestSeats, setNewGuestSeats] = useState(2);
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
 
   useEffect(() => {
     if (!auth) {
@@ -94,12 +95,12 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
 
   const handleAddGuest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGuestName.trim()) return;
+    if (!newFirstName.trim() || !newLastName.trim()) return;
     setStatusMessage(null);
     try {
-      await addGuestRecord(newGuestName, newGuestSeats);
-      setNewGuestName('');
-      setNewGuestSeats(2);
+      await addGuestRecord(newFirstName, newLastName);
+      setNewFirstName('');
+      setNewLastName('');
       setStatusMessage('Guest added to invitation list.');
       await loadAdminData();
     } catch (err) {
@@ -124,7 +125,7 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
     try {
       const res = await seedInitialCollections();
       setStatusMessage(
-        `Seeded ${res.guestsSeeded} guests, ${res.registrySeeded} new registry items, and ${res.blessingsSeeded} new blessings.`
+        `Seeded ${res.guestsSeeded} guests and ${res.registrySeeded} new registry items.`
       );
       await loadAdminData();
     } catch (err) {
@@ -142,9 +143,7 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
   };
 
   const rsvpByGuestId = new Map(rsvps.map((r) => [r.guestId, r]));
-  const inPersonHeadcount = rsvps
-    .filter((r) => r.attendance === 'in-person')
-    .reduce((sum, r) => sum + (r.guestCount || 0), 0);
+  const inPersonCount = rsvps.filter((r) => r.attendance === 'in-person').length;
   const remoteCount = rsvps.filter((r) => r.attendance === 'remote').length;
 
   const giftTitleById = new Map(registryItems.map((i) => [i.id, i.title]));
@@ -298,8 +297,8 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
           <p className="mt-1 font-display text-3xl text-primary">{rsvps.length}</p>
         </div>
         <div className="rounded-2xl border border-gold/30 bg-parchment p-5">
-          <p className="font-label text-xs uppercase tracking-wider text-ink-muted">In-Person Seats</p>
-          <p className="mt-1 font-display text-3xl text-primary">{inPersonHeadcount}</p>
+          <p className="font-label text-xs uppercase tracking-wider text-ink-muted">Attending In-Person</p>
+          <p className="mt-1 font-display text-3xl text-primary">{inPersonCount}</p>
         </div>
         <div className="rounded-2xl border border-gold/30 bg-parchment p-5">
           <p className="font-label text-xs uppercase tracking-wider text-ink-muted">Remote Guests</p>
@@ -310,29 +309,26 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
       {/* Guest List Management */}
       <StationeryCard>
         <h2 className="font-display text-2xl text-primary mb-4">Invited Guest List</h2>
-        <form onSubmit={handleAddGuest} className="flex flex-col sm:flex-row gap-3 mb-6">
+        <form onSubmit={handleAddGuest} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 mb-6">
           <input
             type="text"
-            value={newGuestName}
-            onChange={(e) => setNewGuestName(e.target.value)}
-            placeholder="Guest or family name (e.g. Tito Juan & Tita Maria)"
-            className="celestial-input flex-1 rounded-lg border border-gold-light bg-white px-4 py-2 text-ink"
-          />
-          <select
-            value={newGuestSeats}
-            onChange={(e) => setNewGuestSeats(Number(e.target.value))}
-            aria-label="Reserved seats"
+            value={newFirstName}
+            onChange={(e) => setNewFirstName(e.target.value)}
+            placeholder="First name (e.g. Elena)"
+            aria-label="First name"
             className="celestial-input rounded-lg border border-gold-light bg-white px-4 py-2 text-ink"
-          >
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n} {n === 1 ? 'Seat' : 'Seats'}
-              </option>
-            ))}
-          </select>
+          />
+          <input
+            type="text"
+            value={newLastName}
+            onChange={(e) => setNewLastName(e.target.value)}
+            placeholder="Last name (e.g. Santos)"
+            aria-label="Last name"
+            className="celestial-input rounded-lg border border-gold-light bg-white px-4 py-2 text-ink"
+          />
           <button
             type="submit"
-            disabled={!newGuestName.trim()}
+            disabled={!newFirstName.trim() || !newLastName.trim()}
             className="min-h-12 inline-flex items-center justify-center gap-1.5 rounded-full bg-gold px-6 py-2 font-label text-xs font-semibold uppercase tracking-wider text-primary disabled:opacity-50 cursor-pointer"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
@@ -344,8 +340,8 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gold/30 font-label text-xs uppercase tracking-wider text-secondary">
-                <th className="py-2.5 pr-4">Name</th>
-                <th className="py-2.5 pr-4">Seats</th>
+                <th className="py-2.5 pr-4">First Name</th>
+                <th className="py-2.5 pr-4">Last Name</th>
                 <th className="py-2.5 pr-4">Status</th>
                 <th className="py-2.5 text-right">Action</th>
               </tr>
@@ -355,14 +351,12 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
                 const rsvp = rsvpByGuestId.get(g.id);
                 return (
                   <tr key={g.id}>
-                    <td className="py-3 pr-4 font-medium text-primary-container">{g.displayName}</td>
-                    <td className="py-3 pr-4 text-ink-muted">{g.reservedSeats}</td>
+                    <td className="py-3 pr-4 font-medium text-primary-container">{g.firstName}</td>
+                    <td className="py-3 pr-4 font-medium text-primary-container">{g.lastName}</td>
                     <td className="py-3 pr-4">
                       {rsvp ? (
                         <span className="rounded-full bg-sky-soft px-2.5 py-0.5 font-label text-xs font-semibold text-primary-container">
-                          {rsvp.attendance === 'in-person'
-                            ? `Confirmed (${rsvp.guestCount})`
-                            : 'Remote'}
+                          {rsvp.attendance === 'in-person' ? 'In-Person' : 'Remote'}
                         </span>
                       ) : (
                         <span className="font-label text-xs text-ink-muted">Pending</span>
@@ -393,6 +387,21 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
         </div>
       </StationeryCard>
 
+      {/* Gift Registry Management */}
+      <RegistryManager
+        items={registryItems}
+        guests={guests}
+        rsvps={rsvps}
+        onStatus={(msg) => {
+          setAuthError(null);
+          setStatusMessage(msg);
+        }}
+        onError={(msg) => {
+          setStatusMessage(null);
+          setAuthError(msg);
+        }}
+      />
+
       {/* Submitted RSVPs */}
       <StationeryCard>
         <h2 className="font-display text-2xl text-primary mb-4">Submitted RSVPs</h2>
@@ -400,7 +409,8 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gold/30 font-label text-xs uppercase tracking-wider text-secondary">
-                <th className="py-2.5 pr-4">Guest</th>
+                <th className="py-2.5 pr-4">First Name</th>
+                <th className="py-2.5 pr-4">Last Name</th>
                 <th className="py-2.5 pr-4">Email</th>
                 <th className="py-2.5 pr-4">Attendance</th>
                 <th className="py-2.5 pr-4">Dietary Notes</th>
@@ -410,10 +420,11 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
             <tbody className="divide-y divide-gold/15 font-body text-base">
               {rsvps.map((r) => (
                 <tr key={r.guestId}>
-                  <td className="py-3 pr-4 font-medium text-primary-container">{r.guestName}</td>
+                  <td className="py-3 pr-4 font-medium text-primary-container">{r.firstName}</td>
+                  <td className="py-3 pr-4 font-medium text-primary-container">{r.lastName}</td>
                   <td className="py-3 pr-4 text-ink-muted text-sm">{r.email}</td>
                   <td className="py-3 pr-4 text-sm">
-                    {r.attendance === 'in-person' ? `In-person (${r.guestCount})` : 'Remote'}
+                    {r.attendance === 'in-person' ? 'In-Person' : 'Remote'}
                   </td>
                   <td className="py-3 pr-4 text-sm text-ink-muted">{r.dietaryNotes || '—'}</td>
                   <td className="py-3 text-sm text-ink-muted">
@@ -424,7 +435,7 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
               ))}
               {rsvps.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-ink-muted">
+                  <td colSpan={6} className="py-4 text-center text-ink-muted">
                     No RSVPs submitted yet.
                   </td>
                 </tr>
@@ -459,6 +470,11 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
               </button>
             </div>
           ))}
+          {blessings.length === 0 && (
+            <p className="py-4 text-center font-body text-base text-ink-muted">
+              No blessings submitted yet.
+            </p>
+          )}
         </div>
       </StationeryCard>
     </div>
