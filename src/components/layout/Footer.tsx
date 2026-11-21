@@ -19,7 +19,7 @@ export function Footer({ onOpenAdmin }: FooterProps) {
           “Every good and perfect gift is from above, coming down from the Father of the heavenly lights.”
         </p>
         <p className="mt-3 font-label text-xs tracking-wider text-ink-muted">
-          © 2027 The Lorenzo Paul Family. Blessed with eternal love.
+          © 2027 Reyes Family. Blessed with eternal love.
         </p>
         {onOpenAdmin && (
           <div className="mt-4 no-print">

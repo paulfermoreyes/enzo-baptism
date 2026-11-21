@@ -11,7 +11,6 @@ import {
   Share2,
   Sparkles,
   Utensils,
-  Video,
 } from 'lucide-react';
 import { EVENT_INFO } from '../../data/baptismData';
 import type { AttendanceMode, RegistryItem, RsvpSubmission } from '../../types/baptism';
@@ -202,7 +201,7 @@ export function ConfirmationPass({
         )}
       </StationeryCard>
 
-      {/* Venue & Calendar Cards (or Livestream Card) */}
+      {/* Venue & Calendar Cards (or Spiritual Presence Card) */}
       {previewMode === 'in-person' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <StationeryCard>
@@ -290,42 +289,15 @@ export function ConfirmationPass({
       ) : (
         <StationeryCard className="text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-soft px-4 py-1.5 font-label text-xs font-semibold uppercase tracking-wider text-primary-container mb-3">
-            <Video className="w-4 h-4 text-gold" aria-hidden="true" />
-            {EVENT_INFO.livestream.dateTime}
+            <Heart className="w-4 h-4 text-gold" aria-hidden="true" />
+            {EVENT_INFO.remotePresence.dateTime}
           </span>
           <h3 className="font-display text-2xl sm:text-3xl font-medium text-primary">
-            {EVENT_INFO.livestream.title}
+            {EVENT_INFO.remotePresence.title}
           </h3>
           <p className="mt-3 max-w-xl mx-auto font-body text-lg text-ink-muted">
-            {EVENT_INFO.livestream.description}
+            {EVENT_INFO.remotePresence.description}
           </p>
-          <div className="no-print mt-6 flex flex-wrap justify-center gap-3">
-            <a
-              href={EVENT_INFO.livestream.streamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-h-12 inline-flex items-center gap-2 rounded-full bg-gold px-7 py-3 font-label text-sm font-semibold text-primary shadow-sm hover:bg-gold-bright/90"
-            >
-              <Video className="w-4 h-4" aria-hidden="true" />
-              Access Altar Livestream
-            </a>
-            <button
-              type="button"
-              onClick={() =>
-                downloadIcs(
-                  "Enzo's Baptism Livestream",
-                  'Private Family Livestream',
-                  EVENT_INFO.ceremony.isoStart,
-                  EVENT_INFO.ceremony.isoEnd,
-                  'enzo-baptism-stream.ics'
-                )
-              }
-              className="min-h-12 inline-flex items-center gap-2 rounded-full border border-gold bg-white px-6 py-3 font-label text-sm font-semibold text-primary-container hover:bg-sky-soft/70 cursor-pointer"
-            >
-              <CalendarPlus className="w-4 h-4 text-gold" aria-hidden="true" />
-              Add Stream to Calendar
-            </button>
-          </div>
         </StationeryCard>
       )}
 

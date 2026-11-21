@@ -678,7 +678,7 @@ export function AdminPage({ registryItems, blessings, onBackToSite }: AdminPageP
                       Remote
                     </span>
                     <span className="block font-label text-xs text-ink-muted">
-                      Celebrating in spirit / livestream
+                      Celebrating in spirit from afar
                     </span>
                   </div>
                 </label>

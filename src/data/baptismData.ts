@@ -4,7 +4,7 @@ export const EVENT_INFO = {
   babyFullName: 'Lorenzo Paul Reyes',
   babyNickname: 'Enzo',
   dateDisplay: 'Tuesday, January 12, 2027',
-  rsvpDeadline: 'December 20, 2026',
+  rsvpDeadline: 'December 15, 2026',
   scripture: {
     text: 'Whoever welcomes a little child like this in my name welcomes me.',
     reference: 'Matthew 18:5',
@@ -17,7 +17,7 @@ export const EVENT_INFO = {
     shortVenue: 'Minor Basilica of Mount Carmel',
     address: 'Broadway Ave, corner 5th St, Mariana, New Manila, Quezon City, Metro Manila',
     mapsUrl: 'https://maps.google.com/?q=Minor+Basilica+of+Our+Lady+of+Mount+Carmel+New+Manila+Quezon+City',
-    note: 'Dress Code: Formal pastel or Sunday best',
+    note: 'Dress Code: Baby Blue, Beige, or Brown (Sunday best)',
     isoStart: '20270112T030000Z',
     isoEnd: '20270112T040000Z',
   },
@@ -33,12 +33,11 @@ export const EVENT_INFO = {
     isoStart: '20270112T050000Z',
     isoEnd: '20270112T070000Z',
   },
-  livestream: {
-    title: 'Live Ceremony Stream & Spiritual Presence',
+  remotePresence: {
+    title: 'Celebrating in Spirit & Prayer',
     dateTime: 'January 12, 2027 • 11:00 AM PHT',
     description:
-      'Even from afar, your prayers envelope Lorenzo in divine grace. The Sacred Rite of Baptism will be broadcast live via private family stream so you can witness every moment in prayer with us.',
-    streamUrl: 'https://meet.google.com/',
+      'Even from afar, your prayers and loving wishes surround Lorenzo in divine grace. Thank you for keeping Baby Enzo in your heart on his Christening Day.',
   },
 };
 
@@ -153,29 +152,22 @@ export const FAQ_ITEMS = [
   {
     id: 'attire',
     title: 'Attire & Dress Code',
-    badge: 'Light Tones Preferred',
+    badge: 'Baby Blue, Beige & Brown',
     description:
-      'We kindly ask guests to dress in reverent church attire with soft palettes: tender baby blues, creams, champagne gold, or light pastels.',
+      'We kindly ask guests to dress in reverent church attire featuring soft, warm tones: baby blue, beige, or brown.',
   },
   {
     id: 'gifts',
     title: 'Gifts & Keepsakes',
-    badge: "Enzo's Future Fund",
+    badge: 'Registry & Monetary Option',
     description:
-      'Your prayers, presence, and warm memories are Enzo’s greatest gifts. For those wishing to contribute to Enzo’s education and nursery savings fund, an envelope box will be prepared at Shakey’s reception.',
+      'Your prayers, presence, and warm memories are Enzo’s greatest gifts. If you wish to bless him further, you may browse his Gift Registry when you RSVP—a monetary gift option is also available.',
   },
   {
-    id: 'children',
-    title: 'Young Children Welcome',
-    badge: 'Fun For All Ages',
-    description:
-      'Little cousins and friends are warmly invited! The reception at Shakey’s will feature a dedicated kid-friendly play corner with coloring storybooks and balloon keepsakes.',
-  },
-  {
-    id: 'livestream',
+    id: 'afar',
     title: 'Celebrating From Afar',
-    badge: 'Live Altar Stream',
+    badge: 'Prayers From Afar',
     description:
-      'Loved ones joining remotely can RSVP as "Celebrating in Spirit" to receive the private Basilica livestream link and have their blessing inscribed in Enzo’s Memory Folio.',
+      'Loved ones joining remotely can RSVP as "Celebrating in Spirit" to send their love and have their blessing inscribed in Enzo’s Memory Folio.',
   },
 ];

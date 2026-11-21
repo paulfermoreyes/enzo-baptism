@@ -242,7 +242,7 @@ return (
                 Celebrating in Spirit
               </span>
               <span className="block font-label text-xs font-semibold text-secondary mt-0.5">
-                Joining via Altar Livestream
+                Sending Prayers From Afar
               </span>
               <span className="block font-body text-sm text-ink-muted mt-1">
                 Sending love, heartfelt prayers, and joining remotely from afar.
@@ -347,7 +347,7 @@ return (
             Email Address <span aria-hidden="true">*</span>
           </label>
           <span id={emailHintId} className="block font-label text-xs text-ink-muted mb-1">
-            Format: you@example.com (for updates & stream link)
+            Format: you@example.com (for celebration updates)
           </span>
           <input
             ref={emailInputRef}

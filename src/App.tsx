@@ -34,11 +34,10 @@ const PAGE_TITLES: Record<PageView, string> = {
   admin: 'Host Admin | Lorenzo Paul Holy Baptism',
 };
 
-const PASTEL_SWATCHES = [
-  { name: 'Whispering Baby Blue', hex: '#C9E0F2', note: 'Sky & Cloud Tones' },
-  { name: 'Warm Cotton Parchment', hex: '#FDFBF7', note: 'Ivory & Cream' },
-  { name: 'Gilded Champagne', hex: '#C5A059', note: 'Soft Gold Accents' },
-  { name: 'Gentle Slate Navy', hex: '#2B445B', note: 'Evening & Suiting' },
+const DRESS_CODE_SWATCHES = [
+  { name: 'Baby Blue', hex: '#C9E0F2', note: 'Soft Sky & Cloud Tones' },
+  { name: 'Warm Beige', hex: '#E5D3B3', note: 'Sand, Oat & Taupe' },
+  { name: 'Rich Brown', hex: '#7B5B44', note: 'Chestnut & Earth Tones' },
 ];
 
 const SHOW_HEIRLOOM_NOTES = false;
@@ -157,7 +156,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-clip">
       <Navbar
         currentView={currentView}
         onNavigate={navigateTo}
@@ -172,7 +171,7 @@ export function App() {
               onOpenDressCode={() => setDressCodeOpen(true)}
             />
             <ScheduleSection />
-            <FaqSection />
+            <FaqSection onGoToRsvp={() => navigateTo('rsvp')} />
             {SHOW_HEIRLOOM_NOTES && (
               <BlessingsWall
                 blessings={blessings}
@@ -251,14 +250,14 @@ export function App() {
       <ModalDialog
         open={dressCodeOpen}
         onClose={() => setDressCodeOpen(false)}
-        title="Dress Code: Celestial Pastels"
+        title="Dress Code: Baby Blue, Beige & Brown"
       >
         <p className="font-body text-lg text-ink-muted leading-relaxed">
-          We kindly ask guests to dress in reverent church attire featuring soft, serene tones—tender baby blues, warm creams, champagne gold, or light pastels.
+          We kindly ask guests to dress in reverent church attire featuring soft, warm tones—baby blue, beige, or brown.
         </p>
 
-        <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 list-none p-0 m-0">
-          {PASTEL_SWATCHES.map((swatch) => (
+        <ul className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3 list-none p-0 m-0">
+          {DRESS_CODE_SWATCHES.map((swatch) => (
             <li
               key={swatch.hex}
               className="flex items-center gap-3 rounded-xl border border-gold/30 bg-surface p-3"
