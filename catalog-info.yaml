@@ -1,0 +1,142 @@
+# Backstage Software Catalog Entity Manifest
+# Docs: https://backstage.io/docs/features/software-catalog/descriptor-format
+---
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: events-digital
+  title: Digital Events & Invitations
+  description: Consumer-facing event invitations, RSVP portals, and guest management apps.
+spec:
+  owner: group:default/platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: enzo-baptism-system
+  title: Enzo Baptism Portal
+  description: End-to-end static web portal and Firebase backend for Lorenzo Paul's Holy Baptism.
+spec:
+  owner: group:default/platform-team
+  domain: domain:default/events-digital
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: enzo-baptism
+  title: Enzo Baptism Web App
+  description: >
+    React 19 + TypeScript + Vite SPA hosted on GitHub Pages with Cloud Firestore
+    persistence, atomic gift registry reservations, and Google Sign-In host admin.
+  tags:
+    - react
+    - typescript
+    - vite
+    - tailwindcss
+    - firebase
+    - github-pages
+    - golden-path
+  annotations:
+    github.com/project-slug: paulfermoreyes/enzo-baptism
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/source-location: url:https://github.com/paulfermoreyes/enzo-baptism
+    idp.dev/local-repo-path: /Users/yogi/Desktop/Projects/enzo-baptism
+    idp.dev/tier: tier-2
+    idp.dev/golden-path: react-firebase-spa
+  links:
+    - url: https://paulfermoreyes.github.io/enzo-baptism/
+      title: Production Site (GitHub Pages)
+      icon: web
+    - url: https://github.com/paulfermoreyes/enzo-baptism/actions
+      title: GitHub Actions CI/CD
+      icon: github
+    - url: https://console.firebase.google.com/project/enzo-baptism-2027/overview
+      title: Firebase Console (enzo-baptism-2027)
+      icon: dashboard
+spec:
+  type: website
+  lifecycle: production
+  owner: group:default/platform-team
+  system: system:default/enzo-baptism-system
+  dependsOn:
+    - resource:default/enzo-firestore
+    - resource:default/enzo-firebase-auth
+    - resource:default/enzo-github-pages
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: enzo-firestore
+  title: Cloud Firestore (enzo-baptism-2027)
+  description: >
+    Managed Cloud Firestore database in asia-southeast1 storing guests, rsvps,
+    registry items, and blessings with rules enforced by firestore.rules.
+  tags:
+    - firestore
+    - database
+    - firebase
+    - asia-southeast1
+  links:
+    - url: https://console.firebase.google.com/project/enzo-baptism-2027/firestore
+      title: Firestore Data Explorer
+      icon: dashboard
+spec:
+  type: database
+  owner: group:default/platform-team
+  system: system:default/enzo-baptism-system
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: enzo-firebase-auth
+  title: Firebase Auth (Google Sign-In)
+  description: >
+    Firebase Authentication provider restricting #admin dashboard access to
+    allowlisted host emails (VITE_ADMIN_EMAILS + firestore.rules isAdmin()).
+  tags:
+    - auth
+    - oauth
+    - firebase
+spec:
+  type: identity-provider
+  owner: group:default/platform-team
+  system: system:default/enzo-baptism-system
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: enzo-github-pages
+  title: GitHub Pages Hosting
+  description: >
+    Static asset hosting deployed via approval-gated GitHub Actions environment
+    (github-pages) from main branch.
+  tags:
+    - hosting
+    - github-pages
+    - static-site
+spec:
+  type: hosting
+  owner: group:default/platform-team
+  system: system:default/enzo-baptism-system
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  title: Platform Engineering & App Team
+  description: DevOps & Platform Engineering team managing Golden Paths and enzo-baptism.
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: paulfermoreyes
+  title: Paul Fermo Reyes
+spec:
+  profile:
+    displayName: Paul Fermo Reyes
+    email: paulfermoreyes@gmail.com
+  memberOf:
+    - platform-team

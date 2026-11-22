@@ -1,0 +1,7 @@
+# Default code owner for the entire repository
+* @paulfermoreyes
+
+# CI/CD, security rules, and IDP manifests
+/.github/ @paulfermoreyes
+/catalog-info.yaml @paulfermoreyes
+/firestore.rules @paulfermoreyes

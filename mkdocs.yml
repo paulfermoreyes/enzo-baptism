@@ -1,0 +1,10 @@
+site_name: Enzo Baptism — Service Documentation
+site_description: Architecture, operations runbook, and IDP documentation for enzo-baptism.
+
+nav:
+  - Overview: index.md
+  - Architecture: architecture.md
+  - Operations Runbook: runbook.md
+
+plugins:
+  - techdocs-core

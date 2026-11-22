@@ -214,47 +214,65 @@ export async function submitRsvpToStore(
   const firestore = db;
 
   await runTransaction(firestore, async (tx) => {
+    const trimmedBlessing = submission.blessingMessage.trim();
+
+    // --- Phase 1: Execute all reads before any writes (Firestore requirement) ---
+    const prevRef =
+      previousGiftId && previousGiftId !== submission.reservedGiftId
+        ? doc(firestore, REGISTRY_COLLECTION, previousGiftId)
+        : null;
+    const prevSnap = prevRef ? await tx.get(prevRef) : null;
+
+    const giftRef = submission.reservedGiftId
+      ? doc(firestore, REGISTRY_COLLECTION, submission.reservedGiftId)
+      : null;
+    const giftSnap = giftRef ? await tx.get(giftRef) : null;
+
+    const blessingRef = trimmedBlessing
+      ? doc(firestore, BLESSINGS_COLLECTION, submission.guestId)
+      : null;
+    const existingBlessing = blessingRef ? await tx.get(blessingRef) : null;
+
+    // --- Phase 2: Validate gift availability ---
+    if (giftSnap?.exists()) {
+      const giftData = giftSnap.data() as RegistryItem;
+      if (
+        !giftData.allowMultiple &&
+        giftData.reservedByGuestId !== null &&
+        giftData.reservedByGuestId !== submission.guestId
+      ) {
+        throw new Error(
+          `"${giftData.title}" was just reserved by another guest. Please select another gift.`
+        );
+      }
+    }
+
+    // --- Phase 3: Execute all writes ---
     // 1. Release previous gift if guest changed selection
-    if (previousGiftId && previousGiftId !== submission.reservedGiftId) {
-      const prevRef = doc(firestore, REGISTRY_COLLECTION, previousGiftId);
-      const prevSnap = await tx.get(prevRef);
-      if (prevSnap.exists()) {
-        const prevData = prevSnap.data() as RegistryItem;
-        if (prevData.allowMultiple) {
-          const nextIds = (prevData.reservedByGuestIds ?? []).filter(
-            (id) => id !== submission.guestId
-          );
-          tx.update(prevRef, { reservedByGuestIds: nextIds });
-        } else if (prevData.reservedByGuestId === submission.guestId) {
-          tx.update(prevRef, { reservedByGuestId: null });
-        }
+    if (prevRef && prevSnap?.exists()) {
+      const prevData = prevSnap.data() as RegistryItem;
+      if (prevData.allowMultiple) {
+        const nextIds = (prevData.reservedByGuestIds ?? []).filter(
+          (id) => id !== submission.guestId
+        );
+        tx.update(prevRef, { reservedByGuestIds: nextIds });
+      } else if (prevData.reservedByGuestId === submission.guestId) {
+        tx.update(prevRef, { reservedByGuestId: null });
       }
     }
 
     // 2. Reserve newly selected gift (if any)
-    if (submission.reservedGiftId) {
-      const giftRef = doc(firestore, REGISTRY_COLLECTION, submission.reservedGiftId);
-      const giftSnap = await tx.get(giftRef);
-      if (giftSnap.exists()) {
-        const giftData = giftSnap.data() as RegistryItem;
-        if (giftData.allowMultiple) {
-          const currentIds = giftData.reservedByGuestIds ?? [];
-          if (!currentIds.includes(submission.guestId)) {
-            tx.update(giftRef, {
-              reservedByGuestIds: [...currentIds, submission.guestId],
-            });
-          }
-        } else {
-          if (
-            giftData.reservedByGuestId !== null &&
-            giftData.reservedByGuestId !== submission.guestId
-          ) {
-            throw new Error(
-              `"${giftData.title}" was just reserved by another guest. Please select another gift.`
-            );
-          }
-          tx.update(giftRef, { reservedByGuestId: submission.guestId });
+    if (giftRef && giftSnap?.exists()) {
+      const giftData = giftSnap.data() as RegistryItem;
+      if (giftData.allowMultiple) {
+        const currentIds = giftData.reservedByGuestIds ?? [];
+        if (!currentIds.includes(submission.guestId)) {
+          tx.update(giftRef, {
+            reservedByGuestIds: [...currentIds, submission.guestId],
+          });
         }
+      } else {
+        tx.update(giftRef, { reservedByGuestId: submission.guestId });
       }
     }
 
@@ -272,10 +290,8 @@ export async function submitRsvpToStore(
     );
 
     // 4. Upsert blessing if provided
-    if (submission.blessingMessage.trim()) {
-      const blessingRef = doc(firestore, BLESSINGS_COLLECTION, submission.guestId);
-      const existingBlessing = await tx.get(blessingRef);
-      const existingCreatedAt = existingBlessing.exists()
+    if (blessingRef && trimmedBlessing) {
+      const existingCreatedAt = existingBlessing?.exists()
         ? (existingBlessing.data() as BlessingNote).createdAt
         : undefined;
 
@@ -289,7 +305,7 @@ export async function submitRsvpToStore(
             submission.attendance === 'in-person'
               ? 'Confirmed Guest'
               : 'Celebrating in Spirit',
-          message: submission.blessingMessage.trim(),
+          message: trimmedBlessing,
           createdAt: existingCreatedAt ?? Date.now(),
         } satisfies BlessingNote,
         { merge: true }
